@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쿠팡 로켓그로스 셀러 대시보드 — 백억상사</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8F7F4;--surface:#FFFFFF;--surface2:#F2F1EE;
+  --border:#E4E2DC;--border2:#D0CEC7;
+  --text:#1A1917;--text2:#6B6860;--text3:#A09D98;
+  --blue-bg:#EEF4FF;--blue-text:#1A4FAD;
+  --green-bg:#EDFBF3;--green-text:#0F7A3C;
+  --red-bg:#FFF0EE;--red-text:#C0300F;
+  --amber-bg:#FFF8EC;--amber-text:#8A5300;
+  --purple-bg:#F3F0FF;--purple-text:#4B35B8;
+  --teal-bg:#EDFAF5;--teal-text:#0A6E52;
+  --r-md:8px;--r-lg:12px;--r-xl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;min-height:100vh}
+.page{max-width:960px;margin:0 auto;padding:24px 20px 60px}
+
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.header-brand{display:flex;align-items:center;gap:10px}
+.header-logo{width:34px;height:34px;background:var(--text);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex-shrink:0}
+.header-name{font-size:16px;font-weight:600}
+.header-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.badge-ver{font-size:10px;font-weight:600;padding:4px 11px;border-radius:20px;background:var(--green-bg);color:var(--green-text)}
+
+.modules{display:flex;flex-direction:column;gap:8px}
+
+.mod{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:border-color .2s}
+.mod.open{border-color:var(--border2)}
+.mod-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;transition:background .15s}
+.mod-head:hover{background:var(--surface2)}
+.mod-head-left{display:flex;align-items:center;gap:12px}
+.icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.icon.blue{background:var(--blue-bg);color:var(--blue-text)}
+.icon.green{background:var(--green-bg);color:var(--green-text)}
+.icon.amber{background:var(--amber-bg);color:var(--amber-text)}
+.icon.red{background:var(--red-bg);color:var(--red-text)}
+.icon.purple{background:var(--purple-bg);color:var(--purple-text)}
+.icon.teal{background:var(--teal-bg);color:var(--teal-text)}
+.icon.gray{background:var(--surface2);color:var(--text2)}
+.mod-title{font-size:14px;font-weight:600;color:var(--text)}
+.mod-desc{font-size:11px;color:var(--text3);margin-top:1px}
+.mod-right{display:flex;align-items:center;gap:10px}
+.mod-tags{display:flex;gap:5px}
+.mod-tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px}
+.mod-tag.b{background:var(--blue-bg);color:var(--blue-text)}
+.mod-tag.g{background:var(--green-bg);color:var(--green-text)}
+.mod-tag.r{background:var(--red-bg);color:var(--red-text)}
+.mod-tag.w{background:var(--amber-bg);color:var(--amber-text)}
+.mod-tag.n{background:var(--surface2);color:var(--text2)}
+.chevron{width:20px;height:20px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.chevron svg{width:10px;height:10px;stroke:var(--text2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.mod.open .chevron svg{transform:rotate(180deg)}
+.mod.open .chevron{background:var(--border)}
+.mod-body{display:none;padding:16px 18px;border-top:1px solid var(--border);animation:slideDown .2s ease}
+.mod.open .mod-body{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+input[type=text],input[type=number],textarea,select{
+  width:100%;font-family:'Pretendard',sans-serif;font-size:12px;color:var(--text);
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:7px 10px;outline:none;transition:border-color .15s
+}
+input:focus,textarea:focus,select:focus{border-color:var(--blue-text)}
+textarea{resize:none}
+.fs{margin-bottom:8px}
+.fl{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:3px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.f4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+
+.btn{font-family:'Pretendard',sans-serif;font-size:11px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--surface);color:var(--text2)}
+.btn:hover{background:var(--surface2)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn.primary:hover{opacity:.85}
+.btn.sm{font-size:10px;padding:4px 10px}
+.btn-row{display:flex;justify-content:flex-end;margin-top:10px}
+
+.cat-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.cbtn{font-size:10px;font-weight:500;padding:3px 9px;border:1px solid var(--border2);border-radius:20px;background:var(--surface);color:var(--text2);cursor:pointer;transition:all .15s}
+.cbtn.on{background:var(--text);color:#fff;border-color:var(--text)}
+
+.tag{display:inline-block;font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;margin:2px}
+.tag.g{background:var(--green-bg);color:var(--green-text)}
+.tag.b{background:var(--blue-bg);color:var(--blue-text)}
+.tag.r{background:var(--red-bg);color:var(--red-text)}
+.tag.w{background:var(--amber-bg);color:var(--amber-text)}
+.tag.n{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+
+.result-box{border-radius:var(--r-md);padding:10px 13px;font-size:12px;line-height:1.6;min-height:36px}
+.result-box.empty{color:var(--text3);font-size:11px;background:var(--surface2)}
+.result-box.hi{background:var(--blue-bg);color:var(--blue-text);font-weight:500}
+.result-box.suc{background:var(--green-bg);color:var(--green-text);font-weight:500}
+.result-box.dan{background:var(--red-bg);color:var(--red-text);font-weight:500}
+.result-box.warn{background:var(--amber-bg);color:var(--amber-text)}
+.result-box.plain{background:var(--surface2);color:var(--text)}
+
+.mcard{background:var(--surface2);border-radius:var(--r-md);padding:10px 12px;text-align:center}
+.mcard-l{font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:500}
+.mcard-v{font-size:20px;font-weight:600;color:var(--text)}
+.mcard-v.g{color:var(--green-text)}.mcard-v.r{color:var(--red-text)}.mcard-v.b{color:var(--blue-text)}
+
+.pbar-track{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:5px 0 10px}
+.pbar-fill{height:100%;background:var(--green-text);border-radius:3px;transition:width .4s}
+.sbar{display:flex;align-items:center;gap:8px}
+.strack{flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.sfill{height:100%;background:var(--green-text);border-radius:2px}
+.snum{font-size:11px;font-weight:600;color:var(--green-text);min-width:30px;text-align:right}
+
+.divider{height:1px;background:var(--border);margin:10px 0}
+.sec-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px}
+.rl{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;margin-top:8px}
+.load-txt{font-size:11px;color:var(--text3);text-align:center;padding:12px 0}
+.copy-btn{float:right;font-family:'Pretendard',sans-serif;font-size:10px;font-weight:500;padding:3px 9px;border:1px solid var(--border2);border-radius:5px;background:var(--surface);color:var(--text2);cursor:pointer}
+.copy-btn:hover{background:var(--surface2)}
+
+.checklist{display:flex;flex-direction:column;gap:5px}
+.chk{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--text)}
+.chk input[type=checkbox]{margin-top:1px;cursor:pointer;flex-shrink:0;accent-color:var(--green-text)}
+.done-text{text-decoration:line-through;color:var(--text3)}
+
+.rule-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border);color:var(--text)}
+.rule-row:last-child{border-bottom:none}
+.rule-val{font-weight:600}
+.rule-val.g{color:var(--green-text)}.rule-val.b{color:var(--blue-text)}.rule-val.r{color:var(--red-text)}.rule-val.w{color:var(--amber-text)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+@media(max-width:680px){
+  .f2,.f3,.f4,.two-col{grid-template-columns:1fr}
+  .mod-tags{display:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-brand">
+      <div class="header-logo">백억</div>
+      <div>
+        <div class="header-name">쿠팡 로켓그로스 셀러 대시보드</div>
+        <div class="header-sub">백억상사 수강생 전용 · 쿠팡 공식 14단계 기준 · 2025~2026 알고리즘 적용</div>
+      </div>
+    </div>
+    <span class="badge-ver">v3.0 배포용</span>
+  </div>
+
+  <div class="modules">
+
+    <!-- 1. SEO -->
+    <div class="mod" id="mod_seo">
+      <div class="mod-head" onclick="toggle('mod_seo')">
+        <div class="mod-head-left">
+          <div class="icon blue">SEO</div>
+          <div>
+            <div class="mod-title">SEO 자동 변환기</div>
+            <div class="mod-desc">상품명 · 검색어 · 태그 · 카테고리 경로 자동 생성</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag b">Step 1·2·7·8 연동</span>
+            <span class="mod-tag n">AI 생성</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f2 fs">
+          <div><div class="fl">핵심 키워드 *</div><input type="text" id="s_main" placeholder="예: 무선 선풍기, 단백질 쉐이크" /></div>
+          <div><div class="fl">브랜드명</div><input type="text" id="s_brand" placeholder="없으면 공란" /></div>
+        </div>
+        <div class="f2 fs">
+          <div><div class="fl">주요 스펙</div><input type="text" id="s_spec" placeholder="예: 5단계 풍량, 방수 IPX5" /></div>
+          <div><div class="fl">핵심 혜택</div><input type="text" id="s_benefit" placeholder="예: 저소음 35dB, 국내산" /></div>
+        </div>
+        <div class="fs">
+          <div class="fl">추가 키워드 (콤마 구분)</div>
+          <input type="text" id="s_extra" placeholder="예: 캠핑용, 충전식, 사무실용, 휴대용" />
+        </div>
+        <div class="fs">
+          <div class="fl">카테고리</div>
+          <div class="cat-row" id="catG">
+            <button class="cbtn on" data-c="생활용품">생활용품</button>
+            <button class="cbtn" data-c="식품/건강">식품/건강</button>
+            <button class="cbtn" data-c="패션/잡화">패션/잡화</button>
+            <button class="cbtn" data-c="가전/디지털">가전/디지털</button>
+            <button class="cbtn" data-c="뷰티/헤어">뷰티/헤어</button>
+            <button class="cbtn" data-c="스포츠/레저">스포츠/레저</button>
+            <button class="cbtn" data-c="유아/완구">유아/완구</button>
+            <button class="cbtn" data-c="주방/식기">주방/식기</button>
+            <button class="cbtn" data-c="자동차용품">자동차용품</button>
+            <button class="cbtn" data-c="반려동물">반려동물</button>
+          </div>
+        </div>
+        <div class="btn-row"><button class="btn primary" id="seo_btn" onclick="runSEO()">변환 실행 ↗</button></div>
+        <div id="seo_out" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- 2. 수익 계산기 -->
+    <div class="mod" id="mod_profit">
+      <div class="mod-head" onclick="toggle('mod_profit')">
+        <div class="mod-head-left">
+          <div class="icon green">수익</div>
+          <div>
+            <div class="mod-title">수익 계산기</div>
+            <div class="mod-desc">순이익 · 순이익률 · ROAS · 발주량 실시간 계산</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag g">실시간</span>
+            <span class="mod-tag n">수수료 5.5~10.8%</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f3 fs">
+          <div><div class="fl">판매가 (원)</div><input type="number" id="p_sell" placeholder="35000" oninput="calcP()" /></div>
+          <div><div class="fl">원가 / 매입가 (원)</div><input type="number" id="p_cost" placeholder="12000" oninput="calcP()" /></div>
+          <div><div class="fl">수수료율 (%)</div><input type="number" id="p_fee" placeholder="10.8" oninput="calcP()" /></div>
+        </div>
+        <div class="f4 fs">
+          <div><div class="fl">광고비율 (%)</div><input type="number" id="p_ad" placeholder="10" oninput="calcP()" /></div>
+          <div><div class="fl">반품율 (%)</div><input type="number" id="p_ret" placeholder="3" oninput="calcP()" /></div>
+          <div><div class="fl">물류비 (원/개)</div><input type="number" id="p_ship" placeholder="500" oninput="calcP()" /></div>
+          <div><div class="fl">기타비용 (원)</div><input type="number" id="p_etc" placeholder="0" oninput="calcP()" /></div>
+        </div>
+        <div id="profit_out" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px"></div>
+        <div id="profit_msg"></div>
+        <div class="divider"></div>
+        <div class="sec-label">발주 계산기</div>
+        <div class="f3 fs">
+          <div><div class="fl">예상 일 판매량 (개)</div><input type="number" id="o_d" placeholder="5" oninput="calcO()" /></div>
+          <div><div class="fl">리드타임 (일)</div><input type="number" id="o_l" placeholder="14" oninput="calcO()" /></div>
+          <div><div class="fl">안전재고 (일치)</div><input type="number" id="o_s" placeholder="7" oninput="calcO()" /></div>
+        </div>
+        <div id="order_out"></div>
+      </div>
+    </div>
+
+    <!-- 3. 경쟁사 -->
+    <div class="mod" id="mod_comp">
+      <div class="mod-head" onclick="toggle('mod_comp')">
+        <div class="mod-head-left">
+          <div class="icon amber">분석</div>
+          <div>
+            <div class="mod-title">경쟁사 분석</div>
+            <div class="mod-desc">시장 가격대 · 포지셔닝 전략 · PB 위험도 · 즉시 실행 액션</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag w">아이템위너 키워드</span>
+            <span class="mod-tag n">AI 분석</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f3 fs">
+          <div><div class="fl">분석 키워드 *</div><input type="text" id="c_kw" placeholder="예: 무선 선풍기" /></div>
+          <div><div class="fl">내 판매가 (원)</div><input type="number" id="c_price" placeholder="35000" /></div>
+          <div><div class="fl">카테고리</div><input type="text" id="c_cat" placeholder="예: 가전/디지털" /></div>
+        </div>
+        <div class="fs">
+          <div class="fl">경쟁사 정보 (선택)</div>
+          <textarea id="c_info" style="min-height:52px" placeholder="경쟁사 상품명, 특징, 가격 등 알고 있는 정보 입력 시 더 정밀"></textarea>
+        </div>
+        <div class="btn-row"><button class="btn primary" id="comp_btn" onclick="runComp()">분석 실행 ↗</button></div>
+        <div id="comp_out" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- 4. 금지어 -->
+    <div class="mod" id="mod_ban">
+      <div class="mod-head" onclick="toggle('mod_ban')">
+        <div class="mod-head-left">
+          <div class="icon red">검사</div>
+          <div>
+            <div class="mod-title">금지어 · 정책 위반 검사</div>
+            <div class="mod-desc">타브랜드명 · 과장표현 · 정책위반 자동 감지 + 수정 문구 생성</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag r">계정정지 방지</span>
+            <span class="mod-tag n">AI 검사</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="fs">
+          <div class="fl">검사할 문구 * (상품명, 태그, 상세페이지 문구)</div>
+          <textarea id="ban_txt" style="min-height:90px" placeholder="쿠팡에 등록할 문구를 전부 붙여넣으세요"></textarea>
+        </div>
+        <div class="btn-row"><button class="btn primary" id="ban_btn" onclick="runBan()">검사 실행 ↗</button></div>
+        <div id="ban_out" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- 5. 상세페이지 -->
+    <div class="mod" id="mod_det">
+      <div class="mod-head" onclick="toggle('mod_det')">
+        <div class="mod-head-left">
+          <div class="icon purple">페이지</div>
+          <div>
+            <div class="mod-title">상세페이지 구성안</div>
+            <div class="mod-desc">후킹 문구 · 페인포인트 · 스펙표 · CTA · 썸네일 팁 자동 생성</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag n">모바일 최적화</span>
+            <span class="mod-tag n">Step 5 연동</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="fs"><div class="fl">상품명 *</div><input type="text" id="d_name" placeholder="예: 무선 선풍기 USB 충전식 저소음 35dB 캠핑용" /></div>
+        <div class="f3 fs">
+          <div><div class="fl">타겟 고객</div><input type="text" id="d_tgt" placeholder="예: 30대 직장인" /></div>
+          <div><div class="fl">사용 상황</div><input type="text" id="d_use" placeholder="예: 사무실, 캠핑" /></div>
+          <div><div class="fl">핵심 스펙 (콤마)</div><input type="text" id="d_spec" placeholder="예: 280g, 5000mAh" /></div>
+        </div>
+        <div class="fs">
+          <div class="fl">경쟁사 대비 차별점</div>
+          <textarea id="d_diff" style="min-height:50px" placeholder="예: 타사 대비 소음 50% 감소, AS 1년, 국내 당일 출고"></textarea>
+        </div>
+        <div class="btn-row"><button class="btn primary" id="det_btn" onclick="runDetail()">생성 실행 ↗</button></div>
+        <div id="det_out" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- 6. 체크리스트 -->
+    <div class="mod" id="mod_cl">
+      <div class="mod-head" onclick="toggle('mod_cl')">
+        <div class="mod-head-left">
+          <div class="icon teal">14</div>
+          <div>
+            <div class="mod-title">쿠팡 공식 14단계 체크리스트</div>
+            <div class="mod-desc">등록 전 서류 준비부터 판매요청 완료까지 전체 점검</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span id="cl_badge" class="mod-tag n">0% 완료</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="pbar-track"><div class="pbar-fill" id="cl_bar" style="width:0%"></div></div>
+        <div style="text-align:right;margin-bottom:10px">
+          <button class="btn sm" onclick="resetCL()">체크 초기화</button>
+        </div>
+        <div class="two-col">
+          <div>
+            <div class="sec-label">서류 준비</div>
+            <div class="checklist" id="cl_a"></div>
+            <div class="divider"></div>
+            <div class="sec-label">Step 1~4 — 상품 기본정보</div>
+            <div class="checklist" id="cl_b"></div>
+          </div>
+          <div>
+            <div class="sec-label">Step 5~9 — 등록 세부정보</div>
+            <div class="checklist" id="cl_c"></div>
+            <div class="divider"></div>
+            <div class="sec-label">Step 10~14 — 배송 · 완료</div>
+            <div class="checklist" id="cl_d"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. 핵심 규칙 -->
+    <div class="mod" id="mod_rule">
+      <div class="mod-head" onclick="toggle('mod_rule')">
+        <div class="mod-head-left">
+          <div class="icon gray">규칙</div>
+          <div>
+            <div class="mod-title">핵심 규칙 빠른 참고표</div>
+            <div class="mod-desc">SEO · 이미지 · 수익 기준 · 확장 전략 수치 한눈에</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag n">2025~2026 기준</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="two-col">
+          <div>
+            <div class="sec-label">SEO 규칙</div>
+            <div class="rule-row">상품명 <span class="rule-val b">80자 이내</span></div>
+            <div class="rule-row">핵심키워드 위치 <span class="rule-val b">앞 40자</span></div>
+            <div class="rule-row">검색태그 개수 <span class="rule-val b">10~15개</span></div>
+            <div class="rule-row">검색어 최대 <span class="rule-val b">20개</span></div>
+            <div class="rule-row">노출점수 기준 <span class="rule-val g">80점 이상</span></div>
+            <div class="rule-row">키워드 스팸 <span class="rule-val r">패널티</span></div>
+            <div class="rule-row">타브랜드 무단 사용 <span class="rule-val r">계정정지</span></div>
+            <div class="divider"></div>
+            <div class="sec-label">이미지 규칙</div>
+            <div class="rule-row">대표이미지 배경 <span class="rule-val r">흰색 필수</span></div>
+            <div class="rule-row">이미지 내 문구·가격 <span class="rule-val r">금지</span></div>
+            <div class="rule-row">권장 사이즈 <span class="rule-val b">1000×1000px</span></div>
+            <div class="rule-row">파일 용량 <span class="rule-val b">10MB 이하</span></div>
+            <div class="rule-row">추가이미지 최소 <span class="rule-val b">4장</span></div>
+          </div>
+          <div>
+            <div class="sec-label">수익 기준</div>
+            <div class="rule-row">순이익률 목표 <span class="rule-val g">15% 이상</span></div>
+            <div class="rule-row">광고비 비율 <span class="rule-val b">매출의 10%</span></div>
+            <div class="rule-row">수수료율 범위 <span class="rule-val b">5.5~10.8%</span></div>
+            <div class="rule-row">권장가 초과 시 노출 <span class="rule-val r">최대 60% 감소</span></div>
+            <div class="rule-row">무료배송 매출 효과 <span class="rule-val g">최대 6배</span></div>
+            <div class="rule-row">ROAS 최소 기준 <span class="rule-val g">250% 이상</span></div>
+            <div class="rule-row">ROAS 250% 미만 <span class="rule-val r">노출 제한</span></div>
+            <div class="divider"></div>
+            <div class="sec-label">등록 · 확장 전략</div>
+            <div class="rule-row">초도 발주 순서 <span class="rule-val b">2 → 20 → 100개</span></div>
+            <div class="rule-row">출고 소요시간 <span class="rule-val g">1일 설정 권장</span></div>
+            <div class="rule-row">출고 준수율 <span class="rule-val g">95% 이상</span></div>
+            <div class="rule-row">리뷰 월 목표 <span class="rule-val g">10개 이상</span></div>
+            <div class="rule-row">알고리즘 업데이트 주기 <span class="rule-val w">약 3개월</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let selCat='생활용품';
+
+function toggle(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+document.querySelectorAll('#catG .cbtn').forEach(b=>{
+  b.onclick=function(e){
+    e.stopPropagation();
+    document.querySelectorAll('#catG .cbtn').forEach(x=>x.classList.remove('on'));
+    this.classList.add('on');selCat=this.dataset.c;
+  };
+});
+
+async function ai(prompt){
+  const r=await fetch('/.netlify/functions/chat',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt})
+  });
+  const d=await r.json();
+  return d.content.map(x=>x.text||'').join('').replace(/```json|```/g,'').trim();
+}
+
+function setBtn(id,dis,txt){const b=document.getElementById(id);if(b){b.disabled=dis;if(txt)b.textContent=txt;}}
+function tags(arr,cls){return(arr||[]).map(t=>`<span class="tag ${cls}">${t}</span>`).join('')||`<span class="tag n">없음</span>`;}
+function cp(text,btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig=btn.textContent;btn.textContent='복사됨!';
+    setTimeout(()=>{btn.textContent=orig;},1400);
+  });
+}
+
+async function runSEO(){
+  const main=document.getElementById('s_main').value.trim();
+  if(!main){alert('핵심 키워드를 입력하세요.');return;}
+  setBtn('seo_btn',true,'분석 중...');
+  document.getElementById('seo_out').innerHTML='<div class="load-txt">AI가 2025~2026 알고리즘 기준으로 분석 중...</div>';
+  try{
+    const txt=await ai(`쿠팡 SEO 전문가. 2025~2026 쿠팡 알고리즘 기준. JSON만 반환.
+핵심키워드:${main}, 브랜드:${document.getElementById('s_brand').value||'없음'}, 스펙:${document.getElementById('s_spec').value||'없음'}, 혜택:${document.getElementById('s_benefit').value||'없음'}, 추가키워드:${document.getElementById('s_extra').value||'없음'}, 카테고리:${selCat}
+규칙: 상품명80자이내, 핵심키워드앞40자, 자연스러운문장형, 키워드스팸금지, 타브랜드명금지, 태그10~15개롱테일, 검색어전환율높은8~10개
+JSON: {"title":"최적화상품명","tlen":글자수,"alt":"대안상품명","cat":"쿠팡윙카테고리경로","tags":["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10"],"kws":["검색어1","검색어2","검색어3","검색어4","검색어5","검색어6","검색어7","검색어8"],"score":점수,"tip":"팁한줄"}`);
+    const r=JSON.parse(txt);
+    const tlen=r.tlen||r.title.length;
+    const allTxt=`[Step1 노출 상품명]\n${r.title}\n\n[대안 상품명]\n${r.alt}\n\n[Step2 카테고리]\n${r.cat}\n\n[Step7 검색어]\n${r.kws.join(', ')}\n\n[태그]\n${r.tags.join(', ')}\n\n[SEO점수] ${r.score}점\n[팁] ${r.tip}`;
+    document.getElementById('seo_out').innerHTML=`
+      <button class="copy-btn" onclick="cp(\`${allTxt.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)">전체 복사</button>
+      <div class="rl">최적화 상품명 — ${tlen}자 ${tlen<=80?'✓ 적합':'✗ 80자 초과'}</div>
+      <div class="result-box hi" style="margin-bottom:10px">${r.title}</div>
+      <div class="rl">대안 상품명</div>
+      <div style="font-size:11px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border);margin-bottom:10px">${r.alt}</div>
+      <div class="sbar" style="margin-bottom:10px"><div class="strack"><div class="sfill" style="width:${r.score}%"></div></div><span class="snum">${r.score}점</span><span style="font-size:10px;color:var(--text3);margin-left:4px">SEO 점수</span></div>
+      <div class="rl">카테고리 경로 (Step 2)</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${r.cat}</div>
+      <div class="rl">검색어 ${r.kws.length}개 (Step 7)</div>
+      <div style="margin-bottom:8px">${tags(r.kws,'g')}</div>
+      <div class="rl">태그 ${r.tags.length}개</div>
+      <div style="margin-bottom:8px">${tags(r.tags,'b')}</div>
+      <div style="font-size:11px;color:var(--text3)">${r.tip}</div>`;
+  }catch(e){document.getElementById('seo_out').innerHTML='<div class="result-box dan">오류가 발생했습니다. 다시 시도하세요.</div>';}
+  setBtn('seo_btn',false,'변환 실행 ↗');
+}
+
+function calcP(){
+  const sell=parseFloat(document.getElementById('p_sell').value)||0;
+  const cost=parseFloat(document.getElementById('p_cost').value)||0;
+  const fee=parseFloat(document.getElementById('p_fee').value)||10.8;
+  const ad=parseFloat(document.getElementById('p_ad').value)||10;
+  const ret=parseFloat(document.getElementById('p_ret').value)||3;
+  const ship=parseFloat(document.getElementById('p_ship').value)||0;
+  const etc=parseFloat(document.getElementById('p_etc').value)||0;
+  if(!sell||!cost){document.getElementById('profit_out').innerHTML='';document.getElementById('profit_msg').innerHTML='';return;}
+  const feeA=Math.round(sell*fee/100);
+  const adA=Math.round(sell*ad/100);
+  const retA=Math.round(sell*ret/100);
+  const net=Math.round(sell-cost-feeA-ship-adA-retA-etc);
+  const margin=sell>0?Math.round(net/sell*100):0;
+  const roas=adA>0?Math.round(sell/adA*100):0;
+  const c=margin>=20?'g':margin>=10?'b':'r';
+  document.getElementById('profit_out').innerHTML=`
+    <div class="mcard"><div class="mcard-l">순이익 (개당)</div><div class="mcard-v ${c}">${net.toLocaleString()}원</div></div>
+    <div class="mcard"><div class="mcard-l">순이익률</div><div class="mcard-v ${c}">${margin}%</div></div>
+    <div class="mcard"><div class="mcard-l">ROAS</div><div class="mcard-v b">${roas}%</div></div>`;
+  document.getElementById('profit_msg').innerHTML=`<div style="font-size:11px;color:var(--text3);margin-top:4px">수수료 ${feeA.toLocaleString()}원 | 광고비 ${adA.toLocaleString()}원 | 물류비 ${ship.toLocaleString()}원 | 반품손실 ${retA.toLocaleString()}원${margin<15?' — <span style="color:var(--red-text)">순이익률 15% 미만, 원가·광고비 재검토 필요</span>':''}</div>`;
+}
+
+function calcO(){
+  const d=parseFloat(document.getElementById('o_d').value)||0;
+  const l=parseFloat(document.getElementById('o_l').value)||0;
+  const s=parseFloat(document.getElementById('o_s').value)||0;
+  if(!d||!l){document.getElementById('order_out').innerHTML='';return;}
+  const rp=Math.round(d*(l+s));
+  const init=Math.round(d*60);
+  const mo=Math.round(d*30);
+  document.getElementById('order_out').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="mcard"><div class="mcard-l">재발주 기준점</div><div class="mcard-v b">${rp}개</div></div>
+      <div class="mcard"><div class="mcard-l">초도발주 (60일)</div><div class="mcard-v">${init}개</div></div>
+      <div class="mcard"><div class="mcard-l">월 목표 판매량</div><div class="mcard-v g">${mo}개</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">재고 ${rp}개 이하 시 즉시 발주 — 품절 시 SEO 순위 급락</div>`;
+}
+
+async function runComp(){
+  const kw=document.getElementById('c_kw').value.trim();
+  if(!kw){alert('키워드를 입력하세요.');return;}
+  setBtn('comp_btn',true,'분석 중...');
+  document.getElementById('comp_out').innerHTML='<div class="load-txt">AI 시장 분석 중...</div>';
+  try{
+    const txt=await ai(`쿠팡 시장분석 전문가. JSON만 반환.
+키워드:${kw}, 내판매가:${document.getElementById('c_price').value||'없음'}원, 카테고리:${document.getElementById('c_cat').value||'없음'}, 경쟁사정보:${document.getElementById('c_info').value||'없음'}
+JSON: {"avg":"시장평균가","rec":"권장판매가","recReason":"근거한줄","weakness":["경쟁사약점1","약점2","약점3"],"strategy":["차별화전략1","전략2","전략3"],"winnerKw":["아이템위너키워드1","키워드2","키워드3"],"action":["즉시액션1","액션2","액션3"],"pbRisk":"PB위험도(높음/보통/낮음)+이유한줄"}`);
+    const r=JSON.parse(txt);
+    const allTxt=`[키워드] ${kw}\n[시장평균가] ${r.avg}\n[권장판매가] ${r.rec} — ${r.recReason}\n\n[경쟁사 약점]\n${(r.weakness||[]).join('\n')}\n\n[차별화 전략]\n${(r.strategy||[]).join('\n')}\n\n[아이템위너 키워드]\n${(r.winnerKw||[]).join(', ')}\n\n[즉시 실행]\n${(r.action||[]).join('\n')}\n\n[PB 위험도] ${r.pbRisk}`;
+    document.getElementById('comp_out').innerHTML=`
+      <button class="copy-btn" onclick="cp(\`${allTxt.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)">전체 복사</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="mcard"><div class="mcard-l">시장 평균가</div><div class="mcard-v b" style="font-size:16px">${r.avg}</div></div>
+        <div class="mcard"><div class="mcard-l">권장 판매가</div><div class="mcard-v g" style="font-size:16px">${r.rec}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${r.recReason}</div>
+      <div class="rl">경쟁사 약점</div><div style="margin-bottom:8px">${tags(r.weakness,'r')}</div>
+      <div class="rl">차별화 전략</div><div style="margin-bottom:8px">${tags(r.strategy,'g')}</div>
+      <div class="rl">아이템위너 키워드</div><div style="margin-bottom:8px">${tags(r.winnerKw,'b')}</div>
+      <div class="rl">즉시 실행 액션</div>
+      <div style="margin-bottom:8px">${(r.action||[]).map((a,i)=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${i+1}. ${a}</div>`).join('')}</div>
+      <div class="result-box warn" style="font-size:11px">${r.pbRisk}</div>`;
+  }catch(e){document.getElementById('comp_out').innerHTML='<div class="result-box dan">오류가 발생했습니다. 다시 시도하세요.</div>';}
+  setBtn('comp_btn',false,'분석 실행 ↗');
+}
+
+async function runBan(){
+  const txt=document.getElementById('ban_txt').value.trim();
+  if(!txt){alert('검사할 문구를 입력하세요.');return;}
+  setBtn('ban_btn',true,'검사 중...');
+  document.getElementById('ban_out').innerHTML='<div class="load-txt">AI 정책 검사 중...</div>';
+  try{
+    const res=await ai(`쿠팡 정책 검수 전문가. JSON만 반환.
+검사문구:${txt}
+JSON: {"result":"통과|주의|위반","banned":["금지어1"],"policy":["위반사항1"],"brand":["타브랜드1"],"fixes":["수정방안1","방안2"],"clean":"수정된문구"}`);
+    const r=JSON.parse(res);
+    const rc=r.result==='통과'?'suc':r.result==='주의'?'warn':'dan';
+    const allTxt=`[결과] ${r.result}\n[금지어] ${(r.banned||[]).join(', ')||'없음'}\n[정책위반] ${(r.policy||[]).join(', ')||'없음'}\n[타브랜드] ${(r.brand||[]).join(', ')||'없음'}\n\n[수정방안]\n${(r.fixes||[]).join('\n')}\n\n[수정된 문구]\n${r.clean}`;
+    document.getElementById('ban_out').innerHTML=`
+      <button class="copy-btn" onclick="cp(\`${allTxt.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)">전체 복사</button>
+      <div class="result-box ${rc}" style="font-size:13px;margin-bottom:10px">검사 결과: ${r.result}</div>
+      <div class="rl">발견된 금지어</div><div style="margin-bottom:8px">${tags(r.banned,'r')}</div>
+      <div class="rl">정책 위반 항목</div><div style="margin-bottom:8px">${tags(r.policy,'r')}</div>
+      <div class="rl">타브랜드명 사용</div><div style="margin-bottom:8px">${tags(r.brand,'w')}</div>
+      <div class="rl">수정 방안</div>
+      <div style="margin-bottom:8px">${(r.fixes||[]).map((f,i)=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${i+1}. ${f}</div>`).join('')}</div>
+      <div class="rl">수정된 문구</div>
+      <div class="result-box plain" style="font-size:11px">${r.clean}</div>`;
+  }catch(e){document.getElementById('ban_out').innerHTML='<div class="result-box dan">오류가 발생했습니다. 다시 시도하세요.</div>';}
+  setBtn('ban_btn',false,'검사 실행 ↗');
+}
+
+async function runDetail(){
+  const name=document.getElementById('d_name').value.trim();
+  if(!name){alert('상품명을 입력하세요.');return;}
+  setBtn('det_btn',true,'생성 중...');
+  document.getElementById('det_out').innerHTML='<div class="load-txt">AI 상세페이지 구성 중...</div>';
+  try{
+    const res=await ai(`쿠팡 상세페이지 카피라이터. 모바일 80% 최적화. JSON만 반환.
+상품명:${name}, 타겟:${document.getElementById('d_tgt').value||'없음'}, 사용상황:${document.getElementById('d_use').value||'없음'}, 스펙:${document.getElementById('d_spec').value||'없음'}, 차별점:${document.getElementById('d_diff').value||'없음'}
+JSON: {"hook":"후킹문구1줄","pain":"페인포인트2줄","solution":"솔루션2줄","features":[{"t":"특징명","d":"설명"},{"t":"특징명","d":"설명"},{"t":"특징명","d":"설명"},{"t":"특징명","d":"설명"}],"specs":[{"k":"항목","v":"값"},{"k":"항목","v":"값"},{"k":"항목","v":"값"},{"k":"항목","v":"값"},{"k":"항목","v":"값"}],"cta":"구매유도문구","tip":"썸네일팁한줄"}`);
+    const r=JSON.parse(res);
+    const allTxt=`[후킹]\n${r.hook}\n\n[페인포인트]\n${r.pain}\n\n[솔루션]\n${r.solution}\n\n[핵심특징]\n${(r.features||[]).map(f=>f.t+': '+f.d).join('\n')}\n\n[스펙표]\n${(r.specs||[]).map(s=>s.k+': '+s.v).join('\n')}\n\n[CTA]\n${r.cta}\n\n[썸네일팁]\n${r.tip}`;
+    document.getElementById('det_out').innerHTML=`
+      <button class="copy-btn" onclick="cp(\`${allTxt.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`,this)">전체 복사</button>
+      <div class="result-box hi" style="font-size:13px;margin-bottom:10px">${r.hook}</div>
+      <div class="rl">페인포인트</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px">${r.pain}</div>
+      <div class="rl">솔루션</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px">${r.solution}</div>
+      <div class="rl">핵심 특징 4가지</div>
+      <div style="margin-bottom:8px">${(r.features||[]).map(f=>`<div style="font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">${f.t}</span> — ${f.d}</div>`).join('')}</div>
+      <div class="rl">스펙표</div>
+      <table style="width:100%;margin-bottom:8px;border-collapse:collapse">${(r.specs||[]).map(s=>`<tr><td style="font-size:11px;color:var(--text2);padding:4px 8px 4px 0;white-space:nowrap;border-bottom:1px solid var(--border)">${s.k}</td><td style="font-size:11px;font-weight:500;padding:4px 0;border-bottom:1px solid var(--border)">${s.v}</td></tr>`).join('')}</table>
+      <div class="result-box dan" style="font-size:12px;margin-bottom:6px">${r.cta}</div>
+      <div style="font-size:10px;color:var(--text3)">${r.tip}</div>`;
+  }catch(e){document.getElementById('det_out').innerHTML='<div class="result-box dan">오류가 발생했습니다. 다시 시도하세요.</div>';}
+  setBtn('det_btn',false,'생성 실행 ↗');
+}
+
+const CL_DATA={
+  cl_a:['사업자등록증 + 통신판매업 신고증','쿠팡 윙 계정 + 로켓그로스 계약','정산계좌 등록 완료','KC인증서 (해당 카테고리)','식품위생법 신고증 (식품류)','화장품 제조업 등록증 (화장품류)','수입신고필증 (병행수입)'],
+  cl_b:['상품명 80자 이내, 핵심키워드 앞 40자','카테고리 정확 설정 (수수료율 확인)','전 옵션 바코드(EAN/UPC) 등록','대표이미지 흰 배경 + 문구 없음','이미지 최소 500×500px, 10MB 이하','추가이미지 최소 4장 이상'],
+  cl_c:['상세페이지 모바일 기준 최적화','브랜드명 정확 입력','부가세 Y/N 설정','인증정보 입력 (해당 카테고리)','검색어 최대 20개, 타브랜드명 금지','검색필터 (색상/사이즈 등) 설정','상품정보제공 고시 전 항목 입력'],
+  cl_d:['출고 소요시간 1일 설정 (노출점수 최상)','무료배송 설정 (가능한 경우)','반품지 + 왕복배송비 설정','구비서류 전체 업로드 완료','미리보기 모바일+PC 최종 확인','판매요청 클릭 완료','노출점수 80점 이상 확인 (등록 후)']
+};
+
+function buildCL(){
+  Object.entries(CL_DATA).forEach(([id,items])=>{
+    document.getElementById(id).innerHTML=items.map(item=>`<label class="chk"><input type="checkbox" onchange="updateCL(this)"><span>${item}</span></label>`).join('');
+  });
+}
+function updateCL(cb){
+  if(cb) cb.nextElementSibling.classList.toggle('done-text',cb.checked);
+  const all=document.querySelectorAll('.chk input');
+  const done=document.querySelectorAll('.chk input:checked');
+  const pct=all.length?Math.round(done.length/all.length*100):0;
+  document.getElementById('cl_bar').style.width=pct+'%';
+  const badge=document.getElementById('cl_badge');
+  badge.textContent=`${pct}% 완료`;
+  badge.className='mod-tag '+(pct===100?'g':pct>0?'w':'n');
+}
+function resetCL(){
+  document.querySelectorAll('.chk input').forEach(cb=>{cb.checked=false;cb.nextElementSibling.classList.remove('done-text');});
+  updateCL();
+}
+
+buildCL();
+</script>
+</body>
+</html>

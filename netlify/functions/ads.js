@@ -11,7 +11,6 @@
 
 const ATC_BASE = 'https://adstransparency.google.com';
 const REGION_CODES = { KR: 2410, US: 2840, JP: 2392, GB: 2826 };
-const TIME_BUDGET_MS = 7500;
 const PAGE_SIZE = 40;
 
 const UA_POOL = [
@@ -31,8 +30,20 @@ function reply(statusCode, body) {
 }
 
 class BotChallengeError extends Error {}
+class RetryableError extends Error {}
+class ProxyAuthError extends Error {}
 
-// PROXY_URL 이 있으면 undici ProxyAgent 로 우회. 호출마다 세션 문자열을 붙여 IP 를 바꾼다.
+// 구글이 막으면(302/429) 또는 네트워크·5xx 오류면 프록시 세션을 바꿔 새 한국 IP 로 다시 보낸다.
+// mav-ai 는 5~28초씩 기다리며 4회 돌리지만, Netlify 함수는 10초 제한이라 짧게 3회까지만.
+const MAX_ROTATIONS = 3;
+const FUNCTION_DEADLINE_MS = 8500;
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// PROXY_URL 이 있으면 undici ProxyAgent 로 우회. 비밀번호 뒤에 세션 문자열을 붙여 IP 를 고정하고,
+// rotateProxy() 로 세션을 바꾸면 IPRoyal 이 다른 IP 를 준다.
 let proxied = null;
 function getFetch() {
   if (!process.env.PROXY_URL) return (url, opts) => fetch(url, opts);
@@ -44,28 +55,61 @@ function getFetch() {
       (_, a, pw, b) => `${a}${pw}_session-${session}${b}`
     );
     const dispatcher = new ProxyAgent(url);
-    proxied = (u, opts) => ufetch(u, { ...opts, dispatcher });
+    proxied = { dispatcher, fetch: (u, opts) => ufetch(u, { ...opts, dispatcher }) };
   }
-  return proxied;
+  return proxied.fetch;
 }
 
-async function postRpc(method, payload) {
-  const res = await getFetch()(`${ATC_BASE}/anji/_/rpc/SearchService/${method}?authuser=`, {
-    method: 'POST',
-    redirect: 'manual',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      'x-same-domain': '1',
-      referer: `${ATC_BASE}/?region=KR`,
-      'user-agent': UA_POOL[Math.floor(Math.random() * UA_POOL.length)]
-    },
-    body: `f.req=${encodeURIComponent(JSON.stringify(payload))}`,
-    signal: AbortSignal.timeout(6000)
-  });
+function rotateProxy() {
+  if (proxied) proxied.dispatcher.close().catch(() => {});
+  proxied = null;
+}
+
+async function rpcOnce(method, payload, attempt, timeoutMs) {
+  let res;
+  try {
+    res = await getFetch()(`${ATC_BASE}/anji/_/rpc/SearchService/${method}?authuser=`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-same-domain': '1',
+        referer: `${ATC_BASE}/?region=KR`,
+        'user-agent': UA_POOL[attempt % UA_POOL.length]
+      },
+      body: `f.req=${encodeURIComponent(JSON.stringify(payload))}`,
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (e) {
+    // undici 는 원인을 cause 안쪽에 겹겹이 넣는다 (fetch failed → Request was cancelled → Proxy response (407))
+    const chain = [];
+    for (let c = e; c && chain.length < 5; c = c.cause) chain.push(c.message || String(c));
+    if (chain.some(m => /\b407\b/.test(m))) throw new ProxyAuthError(chain.join(' / '));
+    const msg = chain[chain.length - 1] || String(e);
+    throw new RetryableError(`ATC ${method} 네트워크 오류: ${msg}`);
+  }
   if (res.status === 302 || res.status === 429) throw new BotChallengeError(method);
   const text = await res.text();
+  if (res.status >= 500) throw new RetryableError(`ATC ${method} ${res.status}`);
   if (!res.ok) throw new Error(`ATC ${method} ${res.status}: ${text.slice(0, 150)}`);
   return JSON.parse(text);
+}
+
+async function postRpc(method, payload, deadline) {
+  for (let attempt = 0; ; attempt++) {
+    const remaining = deadline - Date.now();
+    try {
+      return await rpcOnce(method, payload, attempt, Math.max(1000, Math.min(6000, remaining)));
+    } catch (e) {
+      const retryable = e instanceof BotChallengeError || e instanceof RetryableError;
+      // 프록시 없이는 같은 IP 로 다시 보내봐야 또 막히므로 재시도하지 않는다.
+      const canRotate = process.env.PROXY_URL && attempt < MAX_ROTATIONS;
+      if (!retryable || !canRotate || deadline - Date.now() < 2500) throw e;
+      console.warn(`[ATC ${method}] ${e.message || 'bot challenge'} — IP 교체 후 재시도 ${attempt + 1}/${MAX_ROTATIONS}`);
+      rotateProxy();
+      await sleep(300 + Math.random() * 400);
+    }
+  }
 }
 
 function looksLikeDomain(q) {
@@ -77,8 +121,8 @@ function normalizeDomain(q) {
   return q.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*/, '');
 }
 
-async function searchAdvertisers(keyword, code) {
-  const res = await postRpc('SearchSuggestions', { 1: keyword, 2: 10, 3: 10, 4: [code], 5: { 1: 1 } });
+async function searchAdvertisers(keyword, code, deadline) {
+  const res = await postRpc('SearchSuggestions', { 1: keyword, 2: 10, 3: 10, 4: [code], 5: { 1: 1 } }, deadline);
   const out = [];
   for (const item of res['1'] || []) {
     if (!item['1']) continue;
@@ -112,7 +156,9 @@ function parseAd(a) {
 }
 
 async function googleAds({ query, region = 'KR', cursor, advertiserIds }) {
-  const started = Date.now();
+  const deadline = Date.now() + FUNCTION_DEADLINE_MS;
+  // 조회마다 새 IP 로 시작 — 같은 IP 에 요청이 쌓이면 구글 차단이 빨리 온다
+  rotateProxy();
   const code = REGION_CODES[region] || REGION_CODES.KR;
   const isDomain = looksLikeDomain(query);
   let advertisers = [];
@@ -122,7 +168,7 @@ async function googleAds({ query, region = 'KR', cursor, advertiserIds }) {
     filter = { 8: [code], 12: { 1: normalizeDomain(query), 2: true } };
   } else {
     if (!advertiserIds || !advertiserIds.length) {
-      advertisers = await searchAdvertisers(query, code);
+      advertisers = await searchAdvertisers(query, code, deadline);
       advertiserIds = advertisers.map(a => a.id);
     }
     if (!advertiserIds.length) return { mode: 'advertiser', advertisers: [], advertiserIds: [], ads: [], cursor: null };
@@ -138,7 +184,7 @@ async function googleAds({ query, region = 'KR', cursor, advertiserIds }) {
     if (next) payload['4'] = next;
     let res;
     try {
-      res = await postRpc('SearchCreatives', payload);
+      res = await postRpc('SearchCreatives', payload, deadline);
     } catch (e) {
       // 이미 받은 페이지가 있으면 버리지 않고 돌려준다.
       if (ads.length) { partial = true; break; }
@@ -150,7 +196,7 @@ async function googleAds({ query, region = 'KR', cursor, advertiserIds }) {
       ads.push(parseAd(raw));
     }
     next = res['2'] || null;
-  } while (next && Date.now() - started < TIME_BUDGET_MS - 2500);
+  } while (next && deadline - Date.now() > 3500);
 
   return { mode: isDomain ? 'domain' : 'advertiser', advertisers, advertiserIds: advertiserIds || [], ads, cursor: next, partial };
 }
@@ -313,7 +359,21 @@ exports.handler = async function(event) {
     if (e instanceof BotChallengeError) {
       return reply(429, {
         error: 'bot_challenge',
-        message: '구글이 요청을 차단했습니다. 1~3시간 후 다시 시도하거나 Netlify 환경변수에 PROXY_URL(한국 가정용 프록시)을 설정하세요.'
+        message: process.env.PROXY_URL
+          ? `구글이 요청을 차단했습니다. 프록시 IP를 ${MAX_ROTATIONS}회 바꿔 다시 시도했지만 모두 막혔습니다. 1시간 후 다시 조회하세요.`
+          : '구글이 요청을 차단했습니다. 1~3시간 후 다시 시도하거나 Netlify 환경변수에 PROXY_URL(한국 가정용 프록시)을 설정하세요.'
+      });
+    }
+    if (e instanceof ProxyAuthError) {
+      return reply(502, {
+        error: 'proxy_auth',
+        message: '프록시 인증 실패(407). Netlify 환경변수 PROXY_URL의 아이디 · 비밀번호를 확인하세요.'
+      });
+    }
+    if (e instanceof RetryableError && process.env.PROXY_URL) {
+      return reply(502, {
+        error: 'proxy_network',
+        message: `프록시를 통한 연결이 ${MAX_ROTATIONS + 1}회 모두 실패했습니다. PROXY_URL의 주소 · 포트와 IPRoyal 잔여 용량을 확인하세요. (${e.message})`
       });
     }
     return reply(500, { error: e.message });

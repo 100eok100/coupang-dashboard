@@ -82,6 +82,7 @@ textarea{resize:none}
 .btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
 .btn.primary:hover{opacity:.85}
 .btn.sm{font-size:10px;padding:4px 10px}
+a.btn{text-decoration:none;display:inline-block}
 .btn-row{display:flex;justify-content:flex-end;margin-top:10px}
 
 .cat-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
@@ -133,8 +134,27 @@ textarea{resize:none}
 .rule-val.g{color:var(--green-text)}.rule-val.b{color:var(--blue-text)}.rule-val.r{color:var(--red-text)}.rule-val.w{color:var(--amber-text)}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
+.ads-brand{border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-top:10px}
+.ads-brand-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.ads-brand-name{font-size:14px;font-weight:600}
+.ads-brand-sub{font-size:10px;color:var(--text3)}
+.ads-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.ads-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.ads-tools select{width:auto;padding:4px 8px;font-size:11px}
+.ads-tools label{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.ads-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-md)}
+.ads-table{width:100%;border-collapse:collapse;font-size:11px;min-width:640px}
+.ads-table th{text-align:left;font-size:10px;font-weight:600;color:var(--text3);background:var(--surface2);padding:6px 8px;white-space:nowrap}
+.ads-table td{padding:6px 8px;border-top:1px solid var(--border);vertical-align:top}
+.ads-thumb{width:56px;height:40px;object-fit:cover;border-radius:4px;background:var(--surface2);display:block}
+.ads-type{display:inline-flex;width:56px;height:40px;border-radius:4px;background:var(--surface2);color:var(--text3);font-size:10px;align-items:center;justify-content:center}
+.ads-copy{color:var(--text2);max-width:260px}
+.ads-link{color:var(--blue-text);text-decoration:none;font-weight:500;white-space:nowrap}
+.ads-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+
 @media(max-width:680px){
   .f2,.f3,.f4,.two-col{grid-template-columns:1fr}
+  .ads-sum{grid-template-columns:1fr 1fr}
   .mod-tags{display:none}
 }
 </style>
@@ -279,6 +299,38 @@ textarea{resize:none}
         </div>
         <div class="btn-row"><button class="btn primary" id="comp_btn" onclick="runComp()">분석 실행 ↗</button></div>
         <div id="comp_out" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- 3-1. 경쟁사 광고 추적 -->
+    <div class="mod" id="mod_ads">
+      <div class="mod-head" onclick="toggle('mod_ads')">
+        <div class="mod-head-left">
+          <div class="icon red">광고</div>
+          <div>
+            <div class="mod-title">경쟁사 광고 추적</div>
+            <div class="mod-desc">구글 · 유튜브 · 메타 공개 광고 수집 · 장기 집행 소재 · 조회수 성과 배지 · 쿠팡 적용안</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag r">검증 소재 찾기</span>
+            <span class="mod-tag n">공개 데이터</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f3 fs" style="grid-template-columns:2fr 1fr auto;align-items:end">
+          <div><div class="fl">경쟁 브랜드명 또는 도메인 * (콤마로 최대 5개)</div><input type="text" id="ads_q" placeholder="예: 락앤락, 테팔, lotteon.com" onkeydown="if(event.key==='Enter')runAds()" /></div>
+          <div><div class="fl">국가</div>
+            <select id="ads_region"><option value="KR">한국</option><option value="US">미국</option><option value="JP">일본</option><option value="GB">영국</option></select>
+          </div>
+          <div><button class="btn primary" id="ads_btn" onclick="runAds()">불러오기 ↗</button></div>
+        </div>
+        <div id="ads_recent" class="ads-chips"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">30일 이상 계속 돌아가는 광고 = 돈이 되는 소재입니다. 그 후킹 문구와 썸네일을 내 상세페이지 첫 화면에 적용하십시오. 같은 브랜드를 매일 1회 불러오면 조회수 추이 배지(상승세 · 급등 · 둔화)가 붙습니다.</div>
+        <div id="ads_out"></div>
       </div>
     </div>
 
@@ -629,6 +681,258 @@ JSON: {"hook":"후킹문구1줄","pain":"페인포인트2줄","solution":"솔루
   }catch(e){document.getElementById('det_out').innerHTML='<div class="result-box dan">오류가 발생했습니다. 다시 시도하세요.</div>';}
   setBtn('det_btn',false,'생성 실행 ↗');
 }
+
+// ===== 경쟁사 광고 추적 (chonamgyu/mav-ai 수집 로직 이식) =====
+const ADS=[];
+const DAY=86400000;
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function ymd(sec){return sec?new Date(sec*1000).toISOString().slice(0,10):'-';}
+function today(){return new Date().toISOString().slice(0,10);}
+
+async function adsApi(body){
+  const r=await fetch('/.netlify/functions/ads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({error:'서버 응답 오류 (HTTP '+r.status+')'}));
+  if(!r.ok) throw new Error(d.message||d.error||('HTTP '+r.status));
+  return d;
+}
+
+function runDays(ad){return ad.firstSeen&&ad.lastSeen?Math.max(1,Math.round((ad.lastSeen-ad.firstSeen)*1000/DAY)+1):0;}
+function isActive(ad){return ad.lastSeen&&Date.now()-ad.lastSeen*1000<=3*DAY;}
+
+// 유튜브 조회수 일별 스냅샷 — 같은 브랜드를 매일 불러오면 추이 배지 계산에 쓰인다
+function saveSnap(ytId,views){
+  const k='adsnap:'+ytId;const arr=lsGet(k,[]);const d=today();
+  const last=arr[arr.length-1];
+  if(last&&last.d===d) last.v=views; else arr.push({d,v:views});
+  lsSet(k,arr.slice(-30));
+}
+
+function adBadges(ad,info){
+  const out=[];const days=runDays(ad);
+  if(days>=30) out.push(['검증 소재 '+days+'일','g']);
+  if(ad.firstSeen&&Date.now()-ad.firstSeen*1000<=10*DAY) out.push(['새 캠페인','b']);
+  const yt=info&&info.yt;
+  if(yt){
+    const pub=new Date(yt.publishedAt).getTime();
+    if(Date.now()-pub<=21*DAY) out.push(['새 소재','b']);
+    const perDay=yt.views/Math.max(1,(Date.now()-pub)/DAY);
+    if(yt.views>=500000&&perDay>=5000) out.push(['주력','g']);
+    const snaps=lsGet('adsnap:'+info.youtubeId,[]);
+    if(snaps.length>=3){
+      const dl=[];for(let i=1;i<snaps.length;i++) dl.push(snaps[i].v-snaps[i-1].v);
+      const last=dl[dl.length-1],prev=dl[dl.length-2];
+      if(prev>80&&last>=prev*1.8) out.push(['급등','r']);
+      if(dl.length>=3){
+        const recent=dl.slice(-3).reduce((a,b)=>a+b,0)/3;
+        const overall=dl.reduce((a,b)=>a+b,0)/dl.length;
+        if(recent>overall*1.25&&recent>800) out.push(['상승세','w']);
+        const l3=dl.slice(-3);
+        if(l3[0]>l3[1]&&l3[1]>l3[2]&&l3[2]<l3[0]*0.6) out.push(['둔화','n']);
+      }
+    }
+  }
+  return out;
+}
+
+function renderRecent(){
+  const list=lsGet('ads_recent',[]);
+  document.getElementById('ads_recent').innerHTML=list.length?'<span style="font-size:10px;color:var(--text3);align-self:center">최근 추적:</span>'+list.map(q=>`<button class="cbtn" onclick="document.getElementById('ads_q').value=this.dataset.q;runAds()" data-q="${esc(q)}">${esc(q)}</button>`).join(''):'';
+}
+function pushRecent(q){
+  const list=lsGet('ads_recent',[]).filter(x=>x!==q);list.unshift(q);lsSet('ads_recent',list.slice(0,10));renderRecent();
+}
+
+async function runAds(){
+  const raw=document.getElementById('ads_q').value.trim();
+  if(!raw){alert('경쟁 브랜드명 또는 도메인을 입력하세요.');return;}
+  const region=document.getElementById('ads_region').value;
+  const queries=[...new Set(raw.split(',').map(s=>s.trim()).filter(Boolean))].slice(0,5);
+  setBtn('ads_btn',true,'수집 중...');
+  ADS.length=0;
+  const out=document.getElementById('ads_out');out.innerHTML='';
+  for(const q of queries){
+    const i=ADS.length;
+    ADS.push({query:q,region,ads:[],info:{},cursor:null,advertiserIds:null,advertisers:[],meta:null,sort:'days',type:'all',activeOnly:false,loading:true});
+    out.insertAdjacentHTML('beforeend',`<div class="ads-brand" id="ads_b${i}"></div>`);
+    renderBrand(i);
+    try{
+      const [g,m]=await Promise.all([
+        adsApi({action:'google',query:q,region}),
+        adsApi({action:'meta',query:q,region}).catch(e=>({error:e.message,ads:[]}))
+      ]);
+      Object.assign(ADS[i],{ads:g.ads,cursor:g.cursor,advertiserIds:g.advertiserIds,advertisers:g.advertisers,mode:g.mode,partial:g.partial,meta:m});
+      pushRecent(q);
+    }catch(e){ADS[i].error=e.message;}
+    ADS[i].loading=false;renderBrand(i);
+  }
+  setBtn('ads_btn',false,'불러오기 ↗');
+}
+
+async function moreAds(i){
+  const b=ADS[i];b.loadingMore=true;renderBrand(i);
+  try{
+    const g=await adsApi({action:'google',query:b.query,region:b.region,cursor:b.cursor,advertiserIds:b.advertiserIds});
+    const seen=new Set(b.ads.map(a=>a.creativeId));
+    b.ads.push(...g.ads.filter(a=>!seen.has(a.creativeId)));b.cursor=g.cursor;
+  }catch(e){alert(e.message);}
+  b.loadingMore=false;renderBrand(i);
+}
+
+async function enrichAds(i){
+  const b=ADS[i];
+  const targets=b.ads.filter(a=>a.type==='video'&&a.previewUrl&&!b.info[a.creativeId]).sort((x,y)=>runDays(y)-runDays(x)).slice(0,15);
+  if(!targets.length){alert('조회수를 불러올 영상 광고가 더 없습니다.');return;}
+  b.enriching=true;renderBrand(i);
+  try{
+    const r=await adsApi({action:'enrich',ads:targets.map(a=>({creativeId:a.creativeId,previewUrl:a.previewUrl}))});
+    r.items.forEach(it=>{b.info[it.creativeId]=it;if(it.yt) saveSnap(it.youtubeId,it.yt.views);});
+    if(!r.hasYoutubeKey) b.notice='YOUTUBE_API_KEY 미설정 — 광고 문구만 추출했습니다. 조회수·주력 배지는 Netlify 환경변수에 키를 넣어야 나옵니다.';
+    else if(r.ytError) b.notice='YouTube API 오류: '+r.ytError+' (일일 할당량 10,000 초과 여부 확인)';
+    else b.notice='';
+  }catch(e){alert(e.message);}
+  b.enriching=false;renderBrand(i);
+}
+
+function setAdsOpt(i,key,val){ADS[i][key]=val;renderBrand(i);}
+
+function visibleAds(b){
+  let list=b.ads.slice();
+  if(b.type!=='all') list=list.filter(a=>a.type===b.type);
+  if(b.activeOnly) list=list.filter(isActive);
+  const views=a=>(b.info[a.creativeId]&&b.info[a.creativeId].yt&&b.info[a.creativeId].yt.views)||0;
+  if(b.sort==='days') list.sort((x,y)=>runDays(y)-runDays(x));
+  else if(b.sort==='new') list.sort((x,y)=>(y.firstSeen||0)-(x.firstSeen||0));
+  else list.sort((x,y)=>views(y)-views(x));
+  return list;
+}
+
+function renderBrand(i){
+  const b=ADS[i];const el=document.getElementById('ads_b'+i);if(!el)return;
+  const metaUrl=(b.meta&&b.meta.libraryUrl)||`https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${b.region}&q=${encodeURIComponent(b.query)}`;
+  const head=`<div class="ads-brand-head"><div><div class="ads-brand-name">${esc(b.query)}</div><div class="ads-brand-sub">${b.mode==='domain'?'도메인 검색':'광고주 검색'}${b.advertisers&&b.advertisers.length?' · '+b.advertisers.map(a=>esc(a.name)).join(', '):''}</div></div>
+    <a class="btn sm" href="${esc(metaUrl)}" target="_blank" rel="noopener">메타 광고 라이브러리 ↗</a></div>`;
+  if(b.loading){el.innerHTML=head+'<div class="load-txt">구글 광고 투명성 센터 · 메타 광고 라이브러리 수집 중... (최대 10초)</div>';return;}
+  if(b.error){el.innerHTML=head+`<div class="result-box dan">${esc(b.error)}</div>`;return;}
+  if(!b.ads.length){el.innerHTML=head+`<div class="result-box warn">구글 광고 0건. 브랜드명 대신 공식 도메인(예: brand.co.kr)으로 다시 검색하십시오. 그래도 0건이면 이 브랜드는 구글 광고를 돌리지 않는 것입니다. 메타 광고 라이브러리 버튼으로 확인하십시오.</div>${metaBlock(b)}`;return;}
+
+  const total=b.ads.length,video=b.ads.filter(a=>a.type==='video').length;
+  const proven=b.ads.filter(a=>runDays(a)>=30).length;
+  const fresh=b.ads.filter(a=>a.firstSeen&&Date.now()-a.firstSeen*1000<=10*DAY).length;
+  const list=visibleAds(b);const shown=list.slice(0,50);
+  const rows=shown.map(a=>{
+    const info=b.info[a.creativeId];const yt=info&&info.yt;
+    const img=(yt&&yt.thumbnail)||a.image;
+    const copy=[info&&info.headline,info&&info.longHeadline,info&&info.description,yt&&yt.title].filter(Boolean)[0]||'';
+    const link=`https://adstransparency.google.com/advertiser/${encodeURIComponent(a.advertiserId)}/creative/${encodeURIComponent(a.creativeId)}?region=${b.region}`;
+    return `<tr>
+      <td>${img?`<img class="ads-thumb" src="${esc(img)}" loading="lazy" referrerpolicy="no-referrer" alt="">`:`<span class="ads-type">${a.type==='video'?'영상':a.type==='image'?'이미지':'기타'}</span>`}</td>
+      <td>${esc(a.advertiserName)}<div style="color:var(--text3);font-size:10px">${a.type==='video'?'영상':a.type==='image'?'이미지':'텍스트/기타'}${isActive(a)?' · 집행중':''}</div></td>
+      <td style="white-space:nowrap">${ymd(a.firstSeen)}<br><span style="color:var(--text3)">~ ${ymd(a.lastSeen)}</span></td>
+      <td style="font-weight:600">${runDays(a)}일</td>
+      <td>${adBadges(a,info).map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</td>
+      <td style="white-space:nowrap">${yt?yt.views.toLocaleString():'-'}</td>
+      <td class="ads-copy">${esc(copy)}</td>
+      <td><a class="ads-link" href="${link}" target="_blank" rel="noopener">보기</a>${info&&info.youtubeId?` · <a class="ads-link" href="https://www.youtube.com/watch?v=${esc(info.youtubeId)}" target="_blank" rel="noopener">유튜브</a>`:''}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=head+`
+    <div class="ads-sum">
+      <div class="mcard"><div class="mcard-l">구글 광고 수집</div><div class="mcard-v">${total}</div></div>
+      <div class="mcard"><div class="mcard-l">영상 광고</div><div class="mcard-v b">${video}</div></div>
+      <div class="mcard"><div class="mcard-l">30일+ 검증 소재</div><div class="mcard-v g">${proven}</div></div>
+      <div class="mcard"><div class="mcard-l">10일 내 새 캠페인</div><div class="mcard-v r">${fresh}</div></div>
+    </div>
+    ${b.partial?'<div class="result-box warn" style="margin-bottom:8px;font-size:11px">수집 중 구글이 차단해 일부만 가져왔습니다. 1시간 뒤 [더 불러오기]를 누르십시오.</div>':''}
+    ${b.notice?`<div class="result-box warn" style="margin-bottom:8px;font-size:11px">${esc(b.notice)}</div>`:''}
+    <div class="ads-tools">
+      <select onchange="setAdsOpt(${i},'sort',this.value)">
+        <option value="days"${b.sort==='days'?' selected':''}>집행일 긴 순</option>
+        <option value="new"${b.sort==='new'?' selected':''}>최근 시작 순</option>
+        <option value="views"${b.sort==='views'?' selected':''}>조회수 순</option>
+      </select>
+      <select onchange="setAdsOpt(${i},'type',this.value)">
+        <option value="all"${b.type==='all'?' selected':''}>전체 유형</option>
+        <option value="video"${b.type==='video'?' selected':''}>영상만</option>
+        <option value="image"${b.type==='image'?' selected':''}>이미지만</option>
+      </select>
+      <label><input type="checkbox" ${b.activeOnly?'checked':''} onchange="setAdsOpt(${i},'activeOnly',this.checked)">현재 집행중만</label>
+      <span style="flex:1"></span>
+      <button class="btn sm" onclick="enrichAds(${i})" ${b.enriching?'disabled':''}>${b.enriching?'불러오는 중...':'영상 조회수·문구 불러오기'}</button>
+      ${b.cursor?`<button class="btn sm" onclick="moreAds(${i})" ${b.loadingMore?'disabled':''}>${b.loadingMore?'수집 중...':'더 불러오기'}</button>`:''}
+      <button class="btn sm" onclick="adsCSV(${i})">CSV</button>
+      <button class="btn sm primary" id="ads_ai${i}" onclick="adsAI(${i})">AI 분석 → 쿠팡 적용 ↗</button>
+    </div>
+    <div class="ads-wrap"><table class="ads-table">
+      <thead><tr><th>소재</th><th>광고주</th><th>기간</th><th>집행</th><th>배지</th><th>조회수</th><th>광고 문구</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3)">조건에 맞는 광고 없음</td></tr>'}</tbody>
+    </table></div>
+    ${list.length>50?`<div style="font-size:10px;color:var(--text3);margin-top:4px">상위 50개 표시 (전체 ${list.length}개는 CSV로 받으십시오)</div>`:''}
+    ${metaBlock(b)}
+    <div id="ads_ai_out${i}" style="margin-top:10px">${b.aiHtml||''}</div>`;
+}
+
+function metaBlock(b){
+  const m=b.meta;if(!m||!m.ads||!m.ads.length){
+    if(m&&m.error) return `<div style="font-size:10px;color:var(--text3);margin-top:8px">메타 API 오류: ${esc(m.error)}</div>`;
+    return '';
+  }
+  return `<div class="rl" style="margin-top:12px">메타 광고 (페이스북 · 인스타그램) ${m.ads.length}건</div>`+
+    m.ads.slice(0,10).map(a=>`<div style="font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)"><b>${esc(a.pageName)}</b> <span style="color:var(--text3)">${esc((a.startTime||'').slice(0,10))} 시작 · ${esc(a.platforms.join('/'))}</span><div style="color:var(--text2)">${esc(a.title||a.body.slice(0,120))}</div>${a.snapshotUrl?`<a class="ads-link" href="${esc(a.snapshotUrl)}" target="_blank" rel="noopener">소재 보기</a>`:''}</div>`).join('');
+}
+
+function adsCSV(i){
+  const b=ADS[i];
+  const head=['광고주','유형','첫노출','마지막노출','집행일','집행중','배지','유튜브ID','조회수','광고문구','링크'];
+  const rows=visibleAds(b).map(a=>{
+    const info=b.info[a.creativeId];const yt=info&&info.yt;
+    return [a.advertiserName,a.type,ymd(a.firstSeen),ymd(a.lastSeen),runDays(a),isActive(a)?'Y':'N',adBadges(a,info).map(x=>x[0]).join('/'),(info&&info.youtubeId)||'',yt?yt.views:'',(info&&(info.headline||info.description))||(yt&&yt.title)||'',`https://adstransparency.google.com/advertiser/${a.advertiserId}/creative/${a.creativeId}?region=${b.region}`];
+  });
+  const csv='\ufeff'+[head,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download=`경쟁사광고_${b.query}_${today()}.csv`;a.click();URL.revokeObjectURL(url);
+}
+
+async function adsAI(i){
+  const b=ADS[i];
+  const top=b.ads.slice().sort((x,y)=>runDays(y)-runDays(x)).slice(0,15).map(a=>{
+    const info=b.info[a.creativeId];const yt=info&&info.yt;
+    return `${a.type}|${runDays(a)}일|${isActive(a)?'집행중':'종료'}|${(info&&(info.headline||info.description))||(yt&&yt.title)||'문구없음'}|조회${yt?yt.views:'-'}`;
+  }).join('\n');
+  const metaCopy=(b.meta&&b.meta.ads||[]).slice(0,5).map(a=>a.title||a.body.slice(0,80)).join('\n');
+  setBtn('ads_ai'+i,true,'분석 중...');
+  document.getElementById('ads_ai_out'+i).innerHTML='<div class="load-txt">장기 집행 소재 패턴 분석 중...</div>';
+  try{
+    const txt=await ai(`쿠팡 로켓그로스 광고·상세페이지 전문가. 경쟁 브랜드의 외부 광고 데이터를 보고 쿠팡 판매자가 바로 적용할 실행안을 만든다. 30일 이상 집행된 광고는 수익이 검증된 소재로 본다. 광고비는 매출의 10% 기준. 추상적 표현 금지, 숫자와 문장 그대로 복사해서 쓸 수 있게. JSON만 반환.
+브랜드:${b.query}, 구글광고 ${b.ads.length}건, 30일+ ${b.ads.filter(a=>runDays(a)>=30).length}건
+상위 소재(유형|집행일|상태|문구|조회수):
+${top}
+메타 광고 문구:
+${metaCopy||'없음'}
+JSON: {"summary":"이 브랜드가 돈 쓰는 방식 한줄","proven":["검증된 소재 패턴1","패턴2","패턴3"],"hooks":["쿠팡 상세페이지 첫화면 후킹문구1","문구2","문구3","문구4","문구5"],"thumb":"쿠팡 대표이미지 적용 방향 한줄","keywords":["쿠팡 검색어1","검색어2","검색어3","검색어4","검색어5","검색어6"],"price":"가격 포지셔닝 한줄","actions":["오늘 할 일1","할 일2","할 일3"]}`);
+    const r=JSON.parse(txt);
+    const allTxt=`[${b.query} 광고 분석]\n${r.summary}\n\n[검증 소재 패턴]\n${(r.proven||[]).join('\n')}\n\n[상세페이지 후킹 문구]\n${(r.hooks||[]).join('\n')}\n\n[대표이미지] ${r.thumb}\n\n[쿠팡 검색어]\n${(r.keywords||[]).join(', ')}\n\n[가격] ${r.price}\n\n[오늘 할 일]\n${(r.actions||[]).join('\n')}`;
+    b.aiTxt=allTxt;
+    b.aiHtml=`
+      <button class="copy-btn" onclick="cp(ADS[${i}].aiTxt,this)">전체 복사</button>
+      <div class="result-box hi" style="margin-bottom:10px">${esc(r.summary)}</div>
+      <div class="rl">검증 소재 패턴</div><div style="margin-bottom:8px">${tags((r.proven||[]).map(esc),'g')}</div>
+      <div class="rl">상세페이지 후킹 문구</div>
+      <div style="margin-bottom:8px">${(r.hooks||[]).map((h,k)=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${k+1}. ${esc(h)}</div>`).join('')}</div>
+      <div class="rl">대표이미지 방향</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px">${esc(r.thumb)}</div>
+      <div class="rl">쿠팡 검색어</div><div style="margin-bottom:8px">${tags((r.keywords||[]).map(esc),'b')}</div>
+      <div class="rl">가격 포지셔닝</div><div style="font-size:11px;color:var(--text2);margin-bottom:8px">${esc(r.price)}</div>
+      <div class="rl">오늘 할 일</div>
+      <div>${(r.actions||[]).map((a,k)=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${k+1}. ${esc(a)}</div>`).join('')}</div>`;
+  }catch(e){b.aiHtml='<div class="result-box dan">AI 분석 오류. 다시 시도하세요.</div>';}
+  setBtn('ads_ai'+i,false,'AI 분석 → 쿠팡 적용 ↗');
+  document.getElementById('ads_ai_out'+i).innerHTML=b.aiHtml;
+}
+
+renderRecent();
 
 const CL_DATA={
   cl_a:['사업자등록증 + 통신판매업 신고증','쿠팡 윙 계정 + 로켓그로스 계약','정산계좌 등록 완료','KC인증서 (해당 카테고리)','식품위생법 신고증 (식품류)','화장품 제조업 등록증 (화장품류)','수입신고필증 (병행수입)'],

@@ -19,6 +19,7 @@ var KAKAO_CLIENT_SECRET = '';   // 카카오 앱에서 Client Secret 을 켰을 
 var RAIN_PROB = 60;  // 강수확률 60% 이상이면 비
 var RAIN_MM = 5;     // 또는 하루 강수량 5mm 이상이면 비
 var WIND_MS = 10;    // 최대풍속 10m/s 이상이면 강풍
+var HOUR_MM = 0.5;   // 시간대별: 1시간 강수량 0.5mm 이상 또는 강수확률 60% 이상인 시간을 "비 오는 시간"으로 표시
 
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 var WEATHER = [
@@ -42,7 +43,7 @@ function dailyAlert() {
   var days = fetchForecast();
   var messages = buildMessages(days);
   var subject = '[' + NAME + '] ' + headline(days);
-  MailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject, messages.join('\n\n'));
+  MailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject, messages.join('\n\n') + '\n\n' + hourlyDetail(days));
   if (kakaoConnected()) sendKakao(messages);
 }
 
@@ -61,8 +62,11 @@ function dayLabel(iso) {
 function fetchForecast() {
   var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
     '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max' +
+    '&hourly=precipitation_probability,precipitation' +
     '&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=8';
-  var d = JSON.parse(UrlFetchApp.fetch(url).getContentText()).daily;
+  var json = JSON.parse(UrlFetchApp.fetch(url).getContentText());
+  var d = json.daily;
+  var h = json.hourly;
   return d.time.map(function(date, i) {
     var prob = d.precipitation_probability_max[i] || 0;
     var mm = Math.round((d.precipitation_sum[i] || 0) * 10) / 10;
@@ -74,9 +78,32 @@ function fetchForecast() {
       min: Math.round(d.temperature_2m_min[i]),
       max: Math.round(d.temperature_2m_max[i]),
       rain: prob >= RAIN_PROB || mm >= RAIN_MM,
-      windy: wind >= WIND_MS
+      windy: wind >= WIND_MS,
+      windows: rainWindows(h, i)
     };
   });
+}
+
+// 시간별 값은 "직전 1시간" 기준이다 (07:00 값 = 06~07시). 그래서 i일의 0~24시는 i*24+1 ~ i*24+24 번째 값.
+function rainWindows(h, dayIndex) {
+  var windows = [], start = -1;
+  if (!h || !h.time) return windows;
+  for (var k = 0; k <= 24; k++) {
+    var j = dayIndex * 24 + k + 1;
+    var wet = k < 24 && j < h.time.length &&
+      ((h.precipitation[j] || 0) >= HOUR_MM || (h.precipitation_probability[j] || 0) >= RAIN_PROB);
+    if (wet && start < 0) start = k;
+    if (!wet && start >= 0) { windows.push([start, k]); start = -1; }
+  }
+  return windows;
+}
+
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+function windowText(windows, max) {
+  if (!windows.length) return '';
+  var shown = windows.slice(0, max || windows.length).map(function(w) { return pad(w[0]) + '~' + pad(w[1]) + '시'; });
+  return shown.join(', ') + (windows.length > shown.length ? ' 외' : '');
 }
 
 function action(day) {
@@ -87,26 +114,42 @@ function action(day) {
 }
 
 function dayLine(day) {
+  var when = windowText(day.windows, 3);
   return day.label + ' ' + day.sky + ' 강수' + day.prob + '%·' + day.mm + 'mm ' + day.min + '~' + day.max +
-    '도 바람' + day.wind + 'm/s\n→ ' + action(day);
+    '도 바람' + day.wind + 'm/s' + (when ? '\n비 시간: ' + when : '') + '\n→ ' + action(day);
 }
 
 function headline(days) {
   var t = days[1];
-  return '내일 ' + (t.rain ? '비 ' + t.prob + '% ' + t.mm + 'mm' : t.windy ? '강풍 ' + t.wind + 'm/s' : t.sky);
+  var when = windowText(t.windows, 1);
+  return '내일 ' + (t.rain ? '비 ' + t.prob + '% ' + t.mm + 'mm' + (when ? ' (' + when + ')' : '')
+    : t.windy ? '강풍 ' + t.wind + 'm/s' : t.sky);
+}
+
+// 메일에만 붙는 7일 시간대별 비 예보 (카카오는 200자 제한으로 생략)
+function hourlyDetail(days) {
+  return '[시간대별 비 예보]\n' + days.slice(0, 8).map(function(d) {
+    return d.label + ' ' + (windowText(d.windows) || '비 없음');
+  }).join('\n');
 }
 
 // 카카오 텍스트 메시지는 200자 제한이라 [오늘·내일] / [주간] 2건으로 나눈다.
 function buildMessages(days) {
   var daily = '[' + NAME + ' 날씨]\n오늘 ' + dayLine(days[0]) + '\n\n내일 ' + dayLine(days[1]);
   var next = days.slice(1, 8);
-  var week = next.map(function(d) {
-    return d.label + ' ' + (d.rain ? '[비]' : d.windy ? '[강풍]' : d.sky) + ' ' + d.prob + '% ' + d.mm + 'mm';
-  });
   var rainy = next.filter(function(d) { return d.rain; });
   var summary = rainy.length ? '비 예상 ' + rainy.length + '일: 해당일 전날 발송 마감' : '7일간 비 없음: 정상 운영';
-  var weekly = '[' + NAME + ' 주간]\n' + week.join('\n') + '\n' + summary;
-  return [daily, weekly].map(function(t) { return t.slice(0, 200); });
+  function weekly(withTime) {
+    var week = next.map(function(d) {
+      var when = withTime && d.rain ? windowText(d.windows, 1) : '';
+      if (!d.rain) return d.label + ' ' + (d.windy ? '[강풍]' : d.sky) + ' ' + d.prob + '%';
+      return d.label + ' [비] ' + d.prob + '% ' + d.mm + 'mm' + (when ? ' ' + when : '');
+    });
+    return '[' + NAME + ' 주간]\n' + week.join('\n') + '\n' + summary;
+  }
+  // 비 오는 날은 첫 비 시간까지 붙이고, 200자를 넘으면 시간 없이 보낸다.
+  var week = weekly(true).length <= 200 ? weekly(true) : weekly(false);
+  return [daily, week].map(function(t) { return t.slice(0, 200); });
 }
 
 // ---- 카카오톡 (선택) ----

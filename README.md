@@ -42,23 +42,18 @@
 
 ### 5단계. 울산 창고 날씨 카카오톡 알림 (선택)
 매일 07:00(한국시간) 카카오톡 "나와의 채팅"으로 오늘·내일 날씨 + 7일 비 예보가 옵니다.
+Netlify 환경변수 입력 없이 휴대폰 화면에서 전부 설정합니다.
 
-1. developers.kakao.com → [내 애플리케이션] → 앱 생성
-2. [앱 설정 → 플랫폼 → Web] 사이트 도메인에 Netlify 주소 등록
-3. [카카오 로그인] 활성화 ON → Redirect URI 등록 (대시보드 주소 뒤에 `/weather.html` 붙여 접속하면 등록할 주소가 나오고 [복사] 버튼이 있음)
-4. [카카오 로그인 → 동의항목] "카카오톡 메시지 전송" → 선택 동의
-5. Netlify 환경변수 등록 → [Trigger deploy]
-
-| Key | 값 |
-|---|---|
-| `KAKAO_REST_API_KEY` | [앱 키]의 REST API 키 |
-| `ALERT_SECRET` | 아무 비밀번호 (예: baekeok2026) |
-| `KAKAO_CLIENT_SECRET` | 카카오 앱에서 Client Secret을 켠 경우만 |
-| `WAREHOUSE_LAT` / `WAREHOUSE_LON` | 창고 위도/경도 (없으면 울산 시내 기준) |
-
-6. 휴대폰에서 대시보드 주소 뒤에 `/weather.html` 접속 → 비밀번호 입력 → [카카오톡 연결] → 동의 → [지금 테스트 발송]
+1. 휴대폰으로 대시보드 주소 뒤에 `/weather.html` 붙여 접속 (예: `https://○○○.netlify.app/weather.html`)
+2. 화면 1~5번을 위에서부터 순서대로 진행
+   - 1번 비밀번호: 처음 입력한 값이 등록됨
+   - 2번 창고 위치: 창고에 서서 [지금 내 위치를 창고로 저장]
+   - 3번 카카오 앱: 화면 안내대로 만들고 REST API 키 붙여넣기 (도메인·Redirect URI는 [복사] 버튼)
+   - 4번 [카카오톡 연결] → 동의
+   - 5번 [지금 테스트 발송]
 
 판정 기준: 강수확률 60% 이상 또는 강수량 5mm 이상 = 비, 최대풍속 10m/s 이상 = 강풍.
+Netlify 환경변수 `ALERT_SECRET`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`, `WAREHOUSE_LAT`/`WAREHOUSE_LON`, `WAREHOUSE_NAME`을 넣으면 화면 값보다 우선합니다 (좌표는 화면 저장값 우선).
 
 ### 수정 방법
 - `index.html` 파일 수정 후 GitHub에 업로드하면 자동 배포
@@ -76,6 +71,7 @@ coupang-dashboard/
 │       ├── ads.js          ← 경쟁사 광고 수집 함수 (수정 불필요)
 │       ├── weather-alert.js ← 창고 날씨 알림 (매일 07:00 자동)
 │       ├── weather-test.js ← 날씨 알림 미리보기/즉시발송
+│       ├── weather-setup.js ← 설정 화면 저장
 │       └── kakao-auth.js   ← 카카오톡 최초 연결
 │   └── lib/weather-alert.js ← 날씨 판정·메시지 문구
 ├── package.json            ← 프록시용 라이브러리 (수정 불필요)

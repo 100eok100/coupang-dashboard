@@ -1,18 +1,18 @@
 // 울산 창고 날씨 알림 공용 로직
 // 날씨: Open-Meteo (키 불필요) · 발송: 카카오톡 "나에게 보내기" (talk_message 권한)
 //
-// 환경변수
-//   KAKAO_REST_API_KEY     카카오 디벨로퍼스 앱의 REST API 키 (필수)
-//   KAKAO_CLIENT_SECRET    앱에서 Client Secret 을 "사용함"으로 켰을 때만 (선택)
-//   ALERT_SECRET           연결·테스트 주소 보호용 비밀번호 (필수, 아무 문자열)
-//   WAREHOUSE_LAT/LON      창고 좌표 (선택, 기본값은 울산 시내)
-//   WAREHOUSE_NAME         메시지 제목에 쓸 이름 (선택, 기본 "울산 창고")
+// 설정은 /weather.html 화면에서 입력하면 Netlify Blobs 에 저장된다 (Netlify 환경변수 입력 불필요).
+// 같은 이름의 환경변수가 있으면 키·비밀번호는 환경변수가 우선한다.
+//   ALERT_SECRET           연결·테스트 화면 보호용 비밀번호
+//   KAKAO_REST_API_KEY     카카오 디벨로퍼스 앱의 REST API 키
+//   KAKAO_CLIENT_SECRET    앱에서 Client Secret 을 "사용함"으로 켰을 때만
+//   WAREHOUSE_LAT/LON      창고 좌표 (화면에서 "현재 위치 저장"한 값이 우선, 둘 다 없으면 울산 시내)
+//   WAREHOUSE_NAME         메시지 제목에 쓸 이름 (기본 "울산 창고")
 
 const { getStore } = require('@netlify/blobs');
 
-const LAT = parseFloat(process.env.WAREHOUSE_LAT || '35.5384');
-const LON = parseFloat(process.env.WAREHOUSE_LON || '129.3114');
-const NAME = process.env.WAREHOUSE_NAME || '울산 창고';
+const DEFAULT_LAT = 35.5384;
+const DEFAULT_LON = 129.3114;
 
 // 판정 기준 (창고 입출고 기준)
 const RAIN_PROB = 60;  // 강수확률 60% 이상이면 비
@@ -38,10 +38,10 @@ function dayLabel(iso) {
   return `${m}/${d}(${DAYS[dow]})`;
 }
 
-async function fetchForecast() {
+async function fetchForecast(cfg) {
   const params = new URLSearchParams({
-    latitude: LAT,
-    longitude: LON,
+    latitude: cfg.lat,
+    longitude: cfg.lon,
     daily: 'weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max',
     wind_speed_unit: 'ms',
     timezone: 'Asia/Seoul',
@@ -81,29 +81,56 @@ function dayLine(day) {
 }
 
 // 카카오 텍스트 메시지는 200자 제한이라 [오늘·내일] / [주간] 2건으로 나눠 보낸다.
-function buildMessages(days) {
+function buildMessages(days, name = '울산 창고') {
   const [today, tomorrow] = days;
-  const daily = `[${NAME} 날씨]\n오늘 ${dayLine(today)}\n\n내일 ${dayLine(tomorrow)}`;
+  const daily = `[${name} 날씨]\n오늘 ${dayLine(today)}\n\n내일 ${dayLine(tomorrow)}`;
 
   const week = days.slice(1, 8).map(d =>
     `${d.label} ${d.rain ? '[비]' : d.windy ? '[강풍]' : d.sky} ${d.prob}% ${d.mm}mm`
   );
   const rainy = days.slice(1, 8).filter(d => d.rain).map(d => d.label);
   const summary = rainy.length ? `비 예상 ${rainy.length}일: 해당일 전날 발송 마감` : '7일간 비 없음: 정상 운영';
-  const weekly = `[${NAME} 주간]\n${week.join('\n')}\n${summary}`;
+  const weekly = `[${name} 주간]\n${week.join('\n')}\n${summary}`;
 
   return [daily, weekly].map(t => t.slice(0, 200));
 }
 
-// ---- 카카오 토큰 ----
+// ---- 설정 ----
 
-function tokenStore() {
+function store() {
   return getStore('kakao');
 }
 
-async function requestToken(body) {
-  const form = new URLSearchParams({ client_id: process.env.KAKAO_REST_API_KEY, ...body });
-  if (process.env.KAKAO_CLIENT_SECRET) form.set('client_secret', process.env.KAKAO_CLIENT_SECRET);
+async function savedConfig() {
+  return (await store().get('config', { type: 'json' })) || {};
+}
+
+async function saveConfig(patch) {
+  const next = { ...(await savedConfig()), ...patch };
+  await store().setJSON('config', next);
+  return next;
+}
+
+async function loadConfig() {
+  const saved = await savedConfig();
+  const env = process.env;
+  return {
+    secret: env.ALERT_SECRET || saved.secret || '',
+    kakaoKey: env.KAKAO_REST_API_KEY || saved.kakaoKey || '',
+    clientSecret: env.KAKAO_CLIENT_SECRET || saved.clientSecret || '',
+    lat: saved.lat ?? (env.WAREHOUSE_LAT ? parseFloat(env.WAREHOUSE_LAT) : DEFAULT_LAT),
+    lon: saved.lon ?? (env.WAREHOUSE_LON ? parseFloat(env.WAREHOUSE_LON) : DEFAULT_LON),
+    locationSaved: saved.lat != null || !!env.WAREHOUSE_LAT,
+    name: env.WAREHOUSE_NAME || '울산 창고',
+    connected: !!(await store().get('refresh_token'))
+  };
+}
+
+// ---- 카카오 토큰 ----
+
+async function requestToken(cfg, body) {
+  const form = new URLSearchParams({ client_id: cfg.kakaoKey, ...body });
+  if (cfg.clientSecret) form.set('client_secret', cfg.clientSecret);
   const res = await fetch('https://kauth.kakao.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
@@ -115,20 +142,20 @@ async function requestToken(body) {
 }
 
 async function saveRefreshToken(refreshToken) {
-  await tokenStore().set('refresh_token', refreshToken);
+  await store().set('refresh_token', refreshToken);
 }
 
-async function accessToken() {
-  const refresh = await tokenStore().get('refresh_token');
-  if (!refresh) throw new Error('카카오 연결 안 됨: /.netlify/functions/kakao-auth?key=ALERT_SECRET 에서 먼저 연결하세요');
-  const data = await requestToken({ grant_type: 'refresh_token', refresh_token: refresh });
+async function accessToken(cfg) {
+  const refresh = await store().get('refresh_token');
+  if (!refresh) throw new Error('카카오 연결 안 됨: /weather.html 에서 [카카오톡 연결]을 먼저 누르세요');
+  const data = await requestToken(cfg, { grant_type: 'refresh_token', refresh_token: refresh });
   // 만료 1개월 전부터 새 refresh_token 이 내려온다. 받으면 바로 교체해야 2개월 뒤에도 끊기지 않는다.
   if (data.refresh_token) await saveRefreshToken(data.refresh_token);
   return data.access_token;
 }
 
-async function sendKakao(texts) {
-  const token = await accessToken();
+async function sendKakao(cfg, texts) {
+  const token = await accessToken(cfg);
   const link = process.env.URL || 'https://www.weather.go.kr';
   for (const text of texts) {
     const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
@@ -153,10 +180,11 @@ async function sendKakao(texts) {
 }
 
 async function runAlert({ send = true } = {}) {
-  const days = await fetchForecast();
-  const messages = buildMessages(days);
-  if (send) await sendKakao(messages);
+  const cfg = await loadConfig();
+  const days = await fetchForecast(cfg);
+  const messages = buildMessages(days, cfg.name);
+  if (send) await sendKakao(cfg, messages);
   return { messages, days };
 }
 
-module.exports = { runAlert, buildMessages, requestToken, saveRefreshToken };
+module.exports = { runAlert, buildMessages, loadConfig, saveConfig, requestToken, saveRefreshToken };

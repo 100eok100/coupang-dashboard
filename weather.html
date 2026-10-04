@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>창고 날씨 알림</title>
+<style>
+:root{
+  --bg:#F8F7F4;--surface:#FFFFFF;--border:#E4E2DC;
+  --text:#1A1917;--text2:#6B6860;--blue-text:#1A4FAD;--blue-bg:#EEF4FF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.6}
+.page{max-width:560px;margin:0 auto;padding:24px 16px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--text2);font-size:14px;margin:0 0 20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px}
+label{font-size:13px;color:var(--text2)}
+input{width:100%;font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-top:4px}
+button{width:100%;font-size:15px;font-weight:600;padding:12px;border:0;border-radius:8px;margin-top:8px;cursor:pointer;background:var(--blue-text);color:#fff}
+button.ghost{background:var(--blue-bg);color:var(--blue-text)}
+code{display:block;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border-radius:8px;padding:10px;font-size:13px;margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>창고 날씨 카카오톡 알림</h1>
+  <p class="sub">매일 07:00 카카오톡 "나와의 채팅"으로 오늘·내일·7일 비 예보 발송</p>
+
+  <div class="card">
+    <h2>1. 카카오 앱에 등록할 Redirect URI</h2>
+    <code id="redirect"></code>
+    <button class="ghost" id="copy">복사</button>
+  </div>
+
+  <div class="card">
+    <h2>2. 비밀번호 입력</h2>
+    <label for="key">Netlify 환경변수 ALERT_SECRET 값</label>
+    <input id="key" type="password" autocomplete="off">
+  </div>
+
+  <div class="card">
+    <h2>3. 실행</h2>
+    <button id="connect">카카오톡 연결 (최초 1회)</button>
+    <button class="ghost" id="preview">메시지 미리보기</button>
+    <button class="ghost" id="send">지금 테스트 발송</button>
+    <pre id="out" hidden></pre>
+  </div>
+</div>
+<script>
+const fn = location.origin + '/.netlify/functions/';
+const $ = id => document.getElementById(id);
+$('redirect').textContent = fn + 'kakao-auth';
+$('copy').onclick = () => navigator.clipboard.writeText(fn + 'kakao-auth').then(() => { $('copy').textContent = '복사됨'; });
+
+function key() {
+  const k = $('key').value.trim();
+  if (!k) { alert('비밀번호(ALERT_SECRET)를 먼저 입력하세요'); $('key').focus(); }
+  return k;
+}
+
+$('connect').onclick = () => { const k = key(); if (k) location.href = fn + 'kakao-auth?key=' + encodeURIComponent(k); };
+
+async function run(send) {
+  const k = key(); if (!k) return;
+  const out = $('out');
+  out.hidden = false; out.textContent = '실행 중...';
+  try {
+    const res = await fetch(fn + 'weather-test?key=' + encodeURIComponent(k) + (send ? '&send=1' : ''));
+    const data = await res.json();
+    out.textContent = data.error ? '오류: ' + data.error
+      : (send ? '발송 완료\n\n' : '') + data.messages.join('\n\n');
+  } catch (e) {
+    out.textContent = '오류: ' + e.message;
+  }
+}
+$('preview').onclick = () => run(false);
+$('send').onclick = () => run(true);
+</script>
+</body>
+</html>

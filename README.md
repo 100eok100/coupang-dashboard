@@ -45,7 +45,7 @@
 
 1. developers.kakao.com → [내 애플리케이션] → 앱 생성
 2. [앱 설정 → 플랫폼 → Web] 사이트 도메인에 Netlify 주소 등록
-3. [카카오 로그인] 활성화 ON → Redirect URI에 `https://<Netlify주소>/.netlify/functions/kakao-auth` 등록
+3. [카카오 로그인] 활성화 ON → Redirect URI 등록 (대시보드 주소 뒤에 `/weather.html` 붙여 접속하면 등록할 주소가 나오고 [복사] 버튼이 있음)
 4. [카카오 로그인 → 동의항목] "카카오톡 메시지 전송" → 선택 동의
 5. Netlify 환경변수 등록 → [Trigger deploy]
 
@@ -56,8 +56,7 @@
 | `KAKAO_CLIENT_SECRET` | 카카오 앱에서 Client Secret을 켠 경우만 |
 | `WAREHOUSE_LAT` / `WAREHOUSE_LON` | 창고 위도/경도 (없으면 울산 시내 기준) |
 
-6. 휴대폰에서 `https://<Netlify주소>/.netlify/functions/kakao-auth?key=<ALERT_SECRET>` 접속 → 동의 → [테스트 발송]
-7. 미리보기만: `/.netlify/functions/weather-test?key=<ALERT_SECRET>`
+6. 휴대폰에서 대시보드 주소 뒤에 `/weather.html` 접속 → 비밀번호 입력 → [카카오톡 연결] → 동의 → [지금 테스트 발송]
 
 판정 기준: 강수확률 60% 이상 또는 강수량 5mm 이상 = 비, 최대풍속 10m/s 이상 = 강풍.
 
@@ -69,6 +68,7 @@
 ```
 coupang-dashboard/
 ├── index.html              ← 대시보드 메인 파일 (여기만 수정)
+├── weather.html            ← 창고 날씨 알림 연결·테스트 화면
 ├── netlify.toml            ← Netlify 설정 (수정 불필요)
 ├── netlify/
 │   └── functions/

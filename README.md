@@ -40,6 +40,21 @@
 - 조회수 추이 배지는 같은 브랜드를 매일 1회 불러와야 쌓입니다 (브라우저에 저장)
 - 수집 로직 출처: [chonamgyu/mav-ai](https://github.com/chonamgyu/mav-ai) (MIT License)
 
+### 5단계. 울산 창고 날씨 카카오톡 알림 (선택)
+매일 07:00(한국시간) 카카오톡 "나와의 채팅"으로 오늘·내일 날씨 + 7일 비 예보가 옵니다.
+Netlify 환경변수 입력 없이 휴대폰 화면에서 전부 설정합니다.
+
+1. 휴대폰으로 대시보드 주소 뒤에 `/weather.html` 붙여 접속 (예: `https://○○○.netlify.app/weather.html`)
+2. 화면 1~5번을 위에서부터 순서대로 진행
+   - 1번 비밀번호: 처음 입력한 값이 등록됨
+   - 2번 창고 위치: 창고에 서서 [지금 내 위치를 창고로 저장]
+   - 3번 카카오 앱: 화면 안내대로 만들고 REST API 키 붙여넣기 (도메인·Redirect URI는 [복사] 버튼)
+   - 4번 [카카오톡 연결] → 동의
+   - 5번 [지금 테스트 발송]
+
+판정 기준: 강수확률 60% 이상 또는 강수량 5mm 이상 = 비, 최대풍속 10m/s 이상 = 강풍.
+Netlify 환경변수 `ALERT_SECRET`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`, `WAREHOUSE_LAT`/`WAREHOUSE_LON`, `WAREHOUSE_NAME`을 넣으면 화면 값보다 우선합니다 (좌표는 화면 저장값 우선).
+
 ### 수정 방법
 - `index.html` 파일 수정 후 GitHub에 업로드하면 자동 배포
 - 30초 안에 수강생 화면에 반영
@@ -48,11 +63,17 @@
 ```
 coupang-dashboard/
 ├── index.html              ← 대시보드 메인 파일 (여기만 수정)
+├── weather.html            ← 창고 날씨 알림 연결·테스트 화면
 ├── netlify.toml            ← Netlify 설정 (수정 불필요)
 ├── netlify/
 │   └── functions/
 │       ├── chat.js         ← AI 분석 함수 (수정 불필요)
-│       └── ads.js          ← 경쟁사 광고 수집 함수 (수정 불필요)
+│       ├── ads.js          ← 경쟁사 광고 수집 함수 (수정 불필요)
+│       ├── weather-alert.js ← 창고 날씨 알림 (매일 07:00 자동)
+│       ├── weather-test.js ← 날씨 알림 미리보기/즉시발송
+│       ├── weather-setup.js ← 설정 화면 저장
+│       └── kakao-auth.js   ← 카카오톡 최초 연결
+│   └── lib/weather-alert.js ← 날씨 판정·메시지 문구
 ├── package.json            ← 프록시용 라이브러리 (수정 불필요)
 └── README.md
 ```

@@ -7,3 +7,7 @@
   [headers.values]
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
+
+# 울산 창고 날씨 알림: 매일 07:00 한국시간 (UTC 22:00)
+[functions."weather-alert"]
+  schedule = "0 22 * * *"

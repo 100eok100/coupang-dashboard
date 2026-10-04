@@ -8,7 +8,7 @@ Netlify 로그인 없이 구글 계정만으로 돌아갑니다. 매일 아침 7
 1. [weather-alert.gs 원본](https://raw.githubusercontent.com/100eok100/coupang-dashboard/claude/ulsan-warehouse-weather-alerts-s3m09y/google-apps-script/weather-alert.gs) 열기 → 화면 길게 눌러 [전체 선택] → [복사]
 2. https://script.google.com 접속 → [새 프로젝트]
 3. 편집기에 있던 `function myFunction() {}` 지우고 붙여넣기
-4. 위쪽 `LAT`, `LON` 숫자를 창고 좌표로 바꾸기 (구글 지도에서 창고 위치를 길게 누르면 맨 위에 `35.xxxx, 129.xxxx` 표시)
+4. 창고 주소는 `ADDRESS`에 이미 들어 있음 (울산광역시 울주군 청량읍 덕하2길 60-13). 구글 지도로 좌표 자동 변환, 메일 맨 아래 "기준 위치"와 지도 링크로 확인
 5. 저장(디스크 아이콘)
 6. 위쪽 함수 선택이 `setup` 인지 확인 → [실행]
 7. [권한 검토] → 구글 계정 선택 → "확인되지 않은 앱" 화면에서 [고급] → [(프로젝트 이름)(으)로 이동] → [허용]

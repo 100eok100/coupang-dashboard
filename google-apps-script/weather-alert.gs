@@ -2,14 +2,15 @@
 // 매일 아침 7시대에 Gmail 로 오늘·내일·7일 비 예보를 보낸다. 카카오 연결 시 카카오톡 "나와의 채팅"으로도 보낸다.
 //
 // 처음 1회
-//   1. script.google.com → 새 프로젝트 → 이 파일 전체 붙여넣기 → 저장
+//   1. script.google.com → 새 프로젝트 → 이 파일 전체 붙여넣기 → 저장 (창고 주소는 ADDRESS 에 이미 들어 있음)
 //   2. 위쪽 함수 선택에서 setup → [실행] → 권한 허용  (매일 발송 예약 + 테스트 메일 1통)
 // 카카오톡도 받으려면 README 의 "카카오톡 추가" 순서대로 KAKAO_REST_API_KEY 를 넣고 웹 앱으로 배포한다.
 
 // ===== 설정 (여기만 수정) =====
 var NAME = '울산 창고';
-var LAT = 35.5384;   // 창고 위도 (구글 지도에서 창고를 길게 누르면 나오는 첫 번째 숫자)
-var LON = 129.3114;  // 창고 경도 (두 번째 숫자)
+var ADDRESS = '울산광역시 울주군 청량읍 덕하2길 60-13';  // 창고 주소 (좌표는 구글 지도로 자동 변환)
+var LAT = 35.5384;   // 주소 변환이 실패할 때만 쓰는 예비 좌표 (울산 시내)
+var LON = 129.3114;
 var SEND_HOUR = 7;   // 발송 시각 (7 = 오전 7시~8시 사이)
 var KAKAO_REST_API_KEY = '';    // 카카오 앱 REST API 키 (카톡 안 쓰면 비워둠)
 var KAKAO_CLIENT_SECRET = '';   // 카카오 앱에서 Client Secret 을 켰을 때만
@@ -34,6 +35,8 @@ function setup() {
     if (t.getHandlerFunction() === 'dailyAlert') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('dailyAlert').timeBased().everyDays(1).atHour(SEND_HOUR).inTimezone('Asia/Seoul').create();
+  var loc = location();
+  Logger.log('창고 위치: ' + loc.label + ' (' + loc.lat + ', ' + loc.lon + ')');
   dailyAlert();
   Logger.log('설정 완료: 매일 ' + SEND_HOUR + '시대 발송 예약, 테스트 메일 발송함');
 }
@@ -43,8 +46,32 @@ function dailyAlert() {
   var days = fetchForecast();
   var messages = buildMessages(days);
   var subject = '[' + NAME + '] ' + headline(days);
-  MailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject, messages.join('\n\n') + '\n\n' + hourlyDetail(days));
+  var loc = location();
+  MailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject, messages.join('\n\n') + '\n\n' + hourlyDetail(days) +
+    '\n\n기준 위치: ' + loc.label + ' (' + loc.lat + ', ' + loc.lon + ')\n지도 확인: https://maps.google.com/?q=' + loc.lat + ',' + loc.lon);
   if (kakaoConnected()) sendKakao(messages);
+}
+
+// ---- 위치 ----
+// ADDRESS 를 구글 지도로 좌표 변환해 저장해 두고 재사용한다. 주소를 바꾸면 다시 변환한다.
+function location() {
+  var cached = JSON.parse(props().getProperty('LOCATION') || 'null');
+  if (cached && cached.address === ADDRESS) return cached;
+  var loc = { address: ADDRESS, lat: LAT, lon: LON, label: '예비 좌표(울산 시내) - 주소 변환 실패' };
+  if (ADDRESS) {
+    try {
+      var r = Maps.newGeocoder().setRegion('kr').setLanguage('ko').geocode(ADDRESS).results[0];
+      var g = r && r.geometry.location;
+      // 대한민국 범위 안일 때만 채택
+      if (g && g.lat > 33 && g.lat < 39 && g.lng > 124 && g.lng < 132) {
+        loc = { address: ADDRESS, lat: Math.round(g.lat * 10000) / 10000, lon: Math.round(g.lng * 10000) / 10000, label: r.formatted_address };
+        props().setProperty('LOCATION', JSON.stringify(loc));
+      }
+    } catch (err) {
+      Logger.log('주소 변환 실패: ' + err.message);
+    }
+  }
+  return loc;
 }
 
 // ---- 날씨 ----
@@ -60,7 +87,8 @@ function dayLabel(iso) {
 }
 
 function fetchForecast() {
-  var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+  var loc = location();
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
     '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max' +
     '&hourly=precipitation_probability,precipitation' +
     '&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=8';

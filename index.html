@@ -54,6 +54,17 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);
 .mod-tag.r{background:var(--red-bg);color:var(--red-text)}
 .mod-tag.w{background:var(--amber-bg);color:var(--amber-text)}
 .mod-tag.n{background:var(--surface2);color:var(--text2)}
+.mod-tag.p{background:var(--purple-bg);color:var(--purple-text)}
+.rl-form{grid-template-columns:2fr 1fr auto;align-items:end}
+@media(max-width:640px){.rl-form{grid-template-columns:1fr}}
+.rl-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--text2);margin-bottom:8px}
+.rl-meta b{color:var(--text);font-weight:600}
+.rl-steps{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:8px}
+.rl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.rl-text{white-space:pre-wrap;word-break:break-word;max-height:420px;overflow:auto}
+.rl-item{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:5px;cursor:pointer;font-size:11px;background:var(--surface)}
+.rl-item:hover{background:var(--surface2)}
+.rl-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chevron{width:20px;height:20px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
 .chevron svg{width:10px;height:10px;stroke:var(--text2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
 .mod.open .chevron svg{transform:rotate(180deg)}
@@ -331,6 +342,40 @@ a.btn{text-decoration:none;display:inline-block}
         <div id="ads_recent" class="ads-chips"></div>
         <div style="font-size:10px;color:var(--text3);margin-top:6px">30일 이상 계속 돌아가는 광고 = 돈이 되는 소재입니다. 그 후킹 문구와 썸네일을 내 상세페이지 첫 화면에 적용하십시오. 같은 브랜드를 매일 1회 불러오면 조회수 추이 배지(상승세 · 급등 · 둔화)가 붙습니다.</div>
         <div id="ads_out"></div>
+      </div>
+    </div>
+
+    <!-- 3-2. 릴스 다운로더 -->
+    <div class="mod" id="mod_reels">
+      <div class="mod-head" onclick="toggle('mod_reels')">
+        <div class="mod-head-left">
+          <div class="icon purple">릴스</div>
+          <div>
+            <div class="mod-title">릴스 다운로더</div>
+            <div class="mod-desc">인스타 릴스 URL → 영상 · 원문 대본 · 한글 번역 · 후킹 분석 · 변형 대본 3개 · 시트 기록</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag p">팔로우 성장</span>
+            <span class="mod-tag n">AI 분석</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f3 fs rl-form">
+          <div><div class="fl">릴스 URL *</div><input type="text" id="rl_url" placeholder="https://www.instagram.com/reel/..." onkeydown="if(event.key==='Enter')runReels()" /></div>
+          <div><div class="fl">내 상품 (변형 대본용)</div><input type="text" id="rl_product" placeholder="예: 진정 앰플, 퍼프 세정제" /></div>
+          <div><button class="btn primary" id="rl_btn" onclick="runReels()">처리 시작 ↗</button></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">조회수가 팔로워의 3배 이상인 릴스만 넣으십시오. 영상은 분석용입니다. 그대로 재업로드하면 저작권 신고로 계정이 막힙니다. 구조만 가져가고 촬영은 내 상품으로 새로 합니다.</div>
+        <div id="rl_out" style="margin-top:10px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <div class="fl" style="margin:0">최근 작업</div>
+          <button class="btn sm" onclick="reelsCsv()">CSV 다운로드 (구글 시트용)</button>
+        </div>
+        <div id="rl_hist" style="margin-top:6px"></div>
       </div>
     </div>
 
@@ -962,6 +1007,94 @@ function resetCL(){
 }
 
 buildCL();
+
+/* ===== 릴스 다운로더 ===== */
+const RL_KEY='reels_hist_v1';
+let RL={cur:null,tab:'script',hist:[]};
+try{RL.hist=JSON.parse(localStorage.getItem(RL_KEY)||'[]');}catch(e){RL.hist=[];}
+function rlSave(){try{localStorage.setItem(RL_KEY,JSON.stringify(RL.hist.slice(0,50)));}catch(e){}}
+
+async function reelsApi(body){
+  const r=await fetch('/.netlify/functions/reels',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.message||('HTTP '+r.status));
+  return d;
+}
+
+async function runReels(){
+  const url=document.getElementById('rl_url').value.trim();
+  const product=document.getElementById('rl_product').value.trim();
+  if(!url){alert('릴스 URL을 입력하세요.');return;}
+  setBtn('rl_btn',true,'처리 중...');
+  const cur={url,product,at:new Date().toISOString(),steps:{fetch:'run'},errors:{}};
+  RL.cur=cur;RL.tab='script';renderReel();
+  try{
+    Object.assign(cur,await reelsApi({step:'fetch',url}));cur.steps.fetch='ok';
+  }catch(e){cur.steps.fetch='fail';cur.errors.fetch=e.message;renderReel();setBtn('rl_btn',false,'처리 시작 ↗');return;}
+  cur.steps.transcribe='run';renderReel();
+  try{
+    const t=await reelsApi({step:'transcribe',videoUrl:cur.videoUrl});
+    cur.script=t.text;cur.language=t.language;cur.steps.transcribe='ok';
+  }catch(e){cur.steps.transcribe='fail';cur.errors.transcribe=e.message;cur.script='';}
+  cur.steps.analyze='run';renderReel();
+  const base={script:cur.script,caption:cur.caption,product};
+  const jobs=[
+    cur.script?reelsApi({step:'analyze',kind:'translate',...base}).then(d=>{cur.korean=d.text;}).catch(e=>{cur.errors.translate=e.message;}):Promise.resolve(),
+    reelsApi({step:'analyze',kind:'hook',...base}).then(d=>{cur.hook=d.text;}).catch(e=>{cur.errors.hook=e.message;})
+  ];
+  await Promise.all(jobs);
+  cur.steps.analyze=(cur.errors.translate||cur.errors.hook)?'fail':'ok';
+  RL.hist=RL.hist.filter(h=>h.shortcode!==cur.shortcode);
+  RL.hist.unshift(cur);rlSave();
+  if(cur.hook&&!cur.script) RL.tab='hook';
+  renderReel();renderReelHist();
+  setBtn('rl_btn',false,'처리 시작 ↗');
+}
+
+function rlNum(n){if(n==null||n==='')return '-';n=Number(n);return n>=10000?(n/10000).toFixed(1).replace(/\.0$/,'')+'만':n.toLocaleString();}
+
+function renderReel(){
+  const el=document.getElementById('rl_out');const c=RL.cur;
+  if(!c){el.innerHTML='';return;}
+  const mark={run:'진행 중...',ok:'완료',fail:'실패'};
+  const line=(k,label)=>c.steps[k]?`<div>${label} — ${mark[c.steps[k]]}${c.errors[k]?` <span style="color:var(--red-text)">${esc(c.errors[k])}</span>`:''}</div>`:'';
+  let h=`<div class="rl-steps">${line('fetch','1. 릴스 정보 · 영상')}${line('transcribe','2. 대본 추출')}${line('analyze','3. 번역 · 후킹 분석')}${c.errors.translate?`<div style="color:var(--red-text)">번역: ${esc(c.errors.translate)}</div>`:''}${c.errors.hook?`<div style="color:var(--red-text)">분석: ${esc(c.errors.hook)}</div>`:''}</div>`;
+  if(c.steps.fetch!=='ok'){el.innerHTML=h;return;}
+  const ratio=c.views&&c.likes?((c.likes/c.views)*100).toFixed(1)+'%':'-';
+  h+=`<div class="rl-meta"><span>계정 <b>@${esc(c.username||'-')}</b></span><span>조회 <b>${rlNum(c.views)}</b></span><span>좋아요 <b>${rlNum(c.likes)}</b></span><span>댓글 <b>${rlNum(c.comments)}</b></span><span>좋아요율 <b>${ratio}</b></span><span>길이 <b>${c.duration?c.duration+'초':'-'}</b></span></div>`;
+  h+=`<div class="btn-row" style="margin:0;justify-content:flex-start;gap:6px"><a class="btn sm" href="${esc(c.videoUrl)}" target="_blank" rel="noopener noreferrer">릴스 다운로드</a><button class="btn sm" onclick="reelsCopyRow(this)">시트용 복사</button></div>`;
+  const tabs=[['ref','레퍼런스'],['script','원문 대본'],['korean','한글 번역'],['hook','후킹 분석 · 변형 대본']];
+  h+=`<div class="rl-tabs">${tabs.map(([k,l])=>`<button class="cbtn${RL.tab===k?' on':''}" onclick="RL.tab='${k}';renderReel()">${l}</button>`).join('')}</div>`;
+  const body={
+    ref:c.caption||'(캡션 없음)',
+    script:c.script||(c.steps.transcribe==='run'?'추출 중...':'(대본 없음 — 음악만 있는 릴스이거나 추출 실패)'),
+    korean:c.korean||(c.steps.analyze==='run'?'번역 중...':'(번역 없음)'),
+    hook:c.hook||(c.steps.analyze==='run'?'분석 중...':'(분석 없음)')
+  }[RL.tab];
+  h+=`<div class="result-box plain rl-text"><button class="copy-btn" onclick="cp(RL.cur&&rlTabText(),this)">복사</button>${esc(body)}</div>`;
+  el.innerHTML=h;
+}
+function rlTabText(){const c=RL.cur;return {ref:c.caption,script:c.script,korean:c.korean,hook:c.hook}[RL.tab]||'';}
+
+function renderReelHist(){
+  const el=document.getElementById('rl_hist');
+  if(!RL.hist.length){el.innerHTML='<div class="result-box empty">아직 처리한 릴스가 없습니다. 오늘 10개를 넣으십시오.</div>';return;}
+  el.innerHTML=RL.hist.map((h,i)=>`<div class="rl-item" onclick="RL.cur=RL.hist[${i}];RL.tab='hook';renderReel()"><span>@${esc(h.username||'-')} · 조회 ${rlNum(h.views)} · ${esc(h.url)}</span><span style="color:var(--text3);flex-shrink:0">${new Date(h.at).toLocaleDateString('ko-KR')}</span></div>`).join('');
+}
+
+const RL_COLS=['처리일시','URL','계정','조회수','좋아요','댓글','길이(초)','캡션','원문 대본','한글 번역','후킹 분석'];
+function rlRow(h){return [new Date(h.at).toLocaleString('ko-KR'),h.url,h.username,h.views,h.likes,h.comments,h.duration,h.caption,h.script,h.korean,h.hook].map(v=>v==null?'':String(v));}
+function rlQuote(v,sep){return /["\n\r]/.test(v)||v.includes(sep)?'"'+v.replace(/"/g,'""')+'"':v;}
+function reelsCopyRow(btn){if(RL.cur) cp(rlRow(RL.cur).map(v=>rlQuote(v,'\t')).join('\t'),btn);}
+function reelsCsv(){
+  if(!RL.hist.length){alert('처리한 릴스가 없습니다.');return;}
+  const csv='﻿'+[RL_COLS,...RL.hist.map(rlRow)].map(r=>r.map(v=>rlQuote(v,',')).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='reels_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+renderReelHist();
 </script>
 </body>
 </html>

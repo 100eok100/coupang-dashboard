@@ -59,6 +59,26 @@ Netlify 환경변수 `ALERT_SECRET`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`
 - `index.html` 파일 수정 후 GitHub에 업로드하면 자동 배포
 - 30초 안에 수강생 화면에 반영
 
+
+### 5단계. 릴스 다운로더 설정
+같은 [Environment variables] 화면에서 아래 키 중 **1개**를 추가 → [Trigger deploy]
+
+| Key | 용도 | 발급 |
+|---|---|---|
+| `ELEVENLABS_API_KEY` | 릴스 대본 추출 (권장) | elevenlabs.io → 프로필 → API Keys → [Create] (Speech to Text 권한) |
+| `OPENAI_API_KEY` | ElevenLabs가 없을 때 대신 사용 | platform.openai.com → API keys |
+
+**사용법**
+1. 대시보드 → [릴스 다운로더] → 릴스 URL 붙여넣기 → (선택) 내 상품 입력 → [처리 시작]
+2. 약 15~25초 뒤 완료: 원문 대본 · 한글 번역 · 후킹 분석 · 내 상품용 변형 대본 3개
+3. [릴스 다운로드] = 영상 열기 (휴대폰은 길게 눌러 저장) / [시트용 복사] = 구글 시트에 그대로 붙여넣기 / [CSV 다운로드] = 최근 50개 한 번에
+4. 처리 기록은 이 브라우저에만 저장됩니다 (PC · 휴대폰 기록 따로)
+
+**실패할 때**
+- `인스타가 Netlify 서버 IP를 막았습니다` → 4단계의 `PROXY_URL` 설정 (경쟁사 광고 추적과 공용)
+- 그래도 안 되면 PC용 `reels-tool/` (로그인 쿠키 사용, 차단에 가장 강함) 사용
+- 90초 넘는 릴스는 10초 제한 때문에 실패할 수 있습니다
+
 ## 파일 구조
 ```
 coupang-dashboard/

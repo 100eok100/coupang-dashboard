@@ -3,6 +3,7 @@
   "private": true,
   "description": "쿠팡 로켓그로스 셀러 대시보드 — 백억상사",
   "dependencies": {
-    "undici": "^6.21.0"
+    "undici": "^6.21.0",
+    "@netlify/blobs": "^11.1.3"
   }
 }

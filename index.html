@@ -57,6 +57,18 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);
 .mod-tag.p{background:var(--purple-bg);color:var(--purple-text)}
 .rl-form{grid-template-columns:2fr 1fr auto;align-items:end}
 @media(max-width:640px){.rl-form{grid-template-columns:1fr}}
+.fc-form{grid-template-columns:1.2fr 1fr auto;align-items:end}
+@media(max-width:640px){.fc-form{grid-template-columns:1fr}}
+.fc-card{border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;background:var(--surface)}
+.fc-card.rejected{opacity:.5}
+.fc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.fc-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.fc-scene{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:11px;padding:5px 0;border-top:1px dashed var(--border)}
+.fc-scene b{color:var(--text3);font-weight:500}
+.fc-st{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text2)}
+.fc-st.approved,.fc-st.rendered{background:var(--green-bg);color:var(--green-text)}
+.fc-st.rendering{background:var(--blue-bg);color:var(--blue-text)}
+.fc-st.rejected{background:var(--red-bg);color:var(--red-text)}
 .rl-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--text2);margin-bottom:8px}
 .rl-meta b{color:var(--text);font-weight:600}
 .rl-steps{font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:8px}
@@ -73,7 +85,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);
 .mod.open .mod-body{display:block}
 @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
-input[type=text],input[type=number],textarea,select{
+input[type=text],input[type=number],input[type=password],input[type=date],textarea,select{
   width:100%;font-family:'Pretendard',sans-serif;font-size:12px;color:var(--text);
   background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);
   padding:7px 10px;outline:none;transition:border-color .15s
@@ -376,6 +388,41 @@ a.btn{text-decoration:none;display:inline-block}
           <button class="btn sm" onclick="reelsCsv()">CSV 다운로드 (구글 시트용)</button>
         </div>
         <div id="rl_hist" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- 3-3. 콘텐츠 공장 -->
+    <div class="mod" id="mod_factory">
+      <div class="mod-head" onclick="toggle('mod_factory');if(document.getElementById('mod_factory').classList.contains('open'))fcLoad()">
+        <div class="mod-head-left">
+          <div class="icon teal">공장</div>
+          <div>
+            <div class="mod-title">콘텐츠 공장 · 승인함</div>
+            <div class="mod-desc">매일 06:00 피부관리 · 살림꿀팁 · 쿠팡꿀템 숏폼 대본 자동 생성 → 승인 → PC 작업기가 영상 제작</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag g">매일 자동</span>
+            <span class="mod-tag n">관리자 전용</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="f3 fs fc-form">
+          <div><div class="fl">관리자 비밀번호 (날씨 알림과 같음)</div><input type="password" id="fc_key" placeholder="비밀번호" onkeydown="if(event.key==='Enter')fcLoad()" /></div>
+          <div><div class="fl">날짜</div><input type="date" id="fc_date" onchange="fcLoad()" /></div>
+          <div class="btn-row" style="margin:0;gap:6px"><button class="btn" onclick="fcLoad()">불러오기</button><button class="btn primary" id="fc_gen" onclick="fcGenerate()">빠진 대본 생성 ↗</button></div>
+        </div>
+        <div id="fc_msg"></div>
+        <div id="fc_out" style="margin-top:8px"></div>
+        <details style="margin-top:12px">
+          <summary class="fl" style="cursor:pointer">이번 주 소재 · 상품 메모 (대본에 우선 반영)</summary>
+          <div id="fc_memo" style="margin-top:8px"></div>
+          <div class="btn-row"><button class="btn sm" onclick="fcSaveMemo(this)">메모 저장</button></div>
+        </details>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">승인한 대본만 PC 작업기가 영상으로 만듭니다. 같은 구조만 반복되지 않게 날짜마다 구조가 바뀝니다. 대본은 매일 06:00에 자동 생성되고, 카카오톡이 연결돼 있으면 알림이 갑니다.</div>
       </div>
     </div>
 
@@ -1095,6 +1142,96 @@ function reelsCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 renderReelHist();
+
+/* ===== 콘텐츠 공장 ===== */
+const FC={data:null,showRejected:false};
+const FC_ST={pending:'승인 대기',approved:'승인 · 제작 대기',rendering:'PC 제작 중',rendered:'영상 완성',rejected:'반려'};
+try{document.getElementById('fc_key').value=localStorage.getItem('factory_key')||'';}catch(e){}
+
+async function fcApi(body){
+  const key=document.getElementById('fc_key').value.trim();
+  if(!key) throw new Error('관리자 비밀번호를 입력하세요');
+  try{localStorage.setItem('factory_key',key);}catch(e){}
+  const r=await fetch('/.netlify/functions/factory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,...body})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.message||('HTTP '+r.status));
+  return d;
+}
+function fcMsg(t,cls){document.getElementById('fc_msg').innerHTML=t?`<div class="result-box ${cls||'plain'}" style="margin-top:8px">${esc(t)}</div>`:'';}
+function fcDate(){return document.getElementById('fc_date').value;}
+
+async function fcLoad(){
+  if(!document.getElementById('fc_key').value.trim()){fcMsg('관리자 비밀번호를 입력하고 [불러오기]를 누르세요','empty');return;}
+  fcMsg('불러오는 중...','empty');
+  try{
+    const d=await fcApi({action:'list',date:fcDate()});
+    FC.data=d;document.getElementById('fc_date').value=d.date;
+    fcMsg('');fcRender();fcRenderMemo();
+  }catch(e){fcMsg(e.message,'dan');}
+}
+
+async function fcGenerate(){
+  setBtn('fc_gen',true,'생성 중...');fcMsg('주제별 대본 생성 중... (최대 10초)','empty');
+  try{
+    const d=await fcApi({action:'generate',date:fcDate()});
+    FC.data.items=d.items;fcRender();
+    fcMsg(d.errors&&d.errors.length?'일부 실패: '+d.errors.join(' / ')+' — 다시 누르면 빠진 것만 생성합니다':'',d.errors&&d.errors.length?'warn':'');
+  }catch(e){fcMsg(e.message,'dan');}
+  setBtn('fc_gen',false,'빠진 대본 생성 ↗');
+}
+
+async function fcAct(id,body,btn){
+  if(btn){btn.disabled=true;btn.textContent='처리 중...';}
+  try{
+    const d=await fcApi({date:FC.data.date,id,...body});
+    FC.data.items=d.items;fcMsg('');fcRender();
+  }catch(e){fcMsg(e.message,'dan');if(btn){btn.disabled=false;btn.textContent='다시 시도';}}
+}
+
+function fcScriptText(it){
+  const s=it.script;
+  return [`[${it.topic}] ${s.title}`,`구조: ${it.structure}`,`후킹: ${s.hook}`,'',
+    ...s.scenes.map(c=>`${c.t}초 | 촬영: ${c.shot}\n  자막: ${c.text}\n  멘트: ${c.voice}`),'',
+    `CTA: ${s.cta}`,'',s.caption,s.hashtags.map(h=>'#'+h).join(' ')].join('\n');
+}
+
+function fcRender(){
+  const el=document.getElementById('fc_out');const d=FC.data;if(!d)return;
+  const items=d.items.filter(it=>FC.showRejected||it.status!=='rejected');
+  const rej=d.items.length-d.items.filter(it=>it.status!=='rejected').length;
+  if(!items.length){el.innerHTML=`<div class="result-box empty">${d.date} 대본이 없습니다. 매일 06:00에 자동 생성됩니다. 지금 만들려면 [빠진 대본 생성]을 누르세요.</div>`;return;}
+  const cnt=k=>d.items.filter(it=>it.status===k).length;
+  let h=`<div class="rl-meta"><span>승인 대기 <b>${cnt('pending')}</b></span><span>제작 대기 <b>${cnt('approved')}</b></span><span>제작 중 <b>${cnt('rendering')}</b></span><span>완성 <b>${cnt('rendered')}</b></span>${rej?`<span><a href="#" onclick="FC.showRejected=!FC.showRejected;fcRender();return false">${FC.showRejected?'반려 숨기기':'반려 '+rej+'개 보기'}</a></span>`:''}</div>`;
+  h+=items.map(it=>{
+    const s=it.script;const i=d.items.indexOf(it);
+    const btns=it.status==='pending'
+      ?`<button class="btn sm primary" onclick="fcAct('${it.id}',{action:'status',status:'approved'},this)">승인</button><button class="btn sm" onclick="fcAct('${it.id}',{action:'regenerate'},this)">다시 생성</button><button class="btn sm" onclick="fcAct('${it.id}',{action:'status',status:'rejected'},this)">반려</button>`
+      :it.status==='approved'?`<button class="btn sm" onclick="fcAct('${it.id}',{action:'status',status:'pending'},this)">승인 취소</button>`
+      :it.status==='rejected'?`<button class="btn sm" onclick="fcAct('${it.id}',{action:'status',status:'pending'},this)">되살리기</button>`:'';
+    return `<div class="fc-card ${it.status}">
+      <div class="fc-top"><span class="mod-tag p">${esc(it.topic)}</span><span class="fc-st ${it.status}">${FC_ST[it.status]||it.status}${it.worker?' · '+esc(it.worker):''}</span></div>
+      <div class="fc-title">${esc(s.title)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px">구조: ${esc(it.structure)} · 첫 3초: <b style="color:var(--text)">${esc(s.hook)}</b></div>
+      ${s.scenes.map(c=>`<div class="fc-scene"><b>${esc(c.t)}초</b><div>촬영: ${esc(c.shot)}<br>자막: <b style="color:var(--text)">${esc(c.text)}</b><br>멘트: ${esc(c.voice)}</div></div>`).join('')}
+      <div class="fc-scene"><b>CTA</b><div>${esc(s.cta)}</div></div>
+      <div class="fc-scene"><b>캡션</b><div style="white-space:pre-wrap">${esc(s.caption)}\n${esc(s.hashtags.map(x=>'#'+x).join(' '))}</div></div>
+      ${s.check?`<div class="fc-scene"><b>점검</b><div>${esc(s.check)}</div></div>`:''}
+      ${it.file?`<div class="fc-scene"><b>파일</b><div>${esc(it.file)}</div></div>`:''}
+      <div class="btn-row" style="justify-content:flex-start;gap:6px;flex-wrap:wrap">${btns}<button class="btn sm" onclick="cp(fcScriptText(FC.data.items[${i}]),this)">대본 복사</button></div>
+    </div>`;}).join('');
+  el.innerHTML=h;
+}
+
+function fcRenderMemo(){
+  const d=FC.data;
+  document.getElementById('fc_memo').innerHTML=d.topics.map(t=>`<div class="fs"><div class="fl">${esc(t)}</div><input type="text" data-topic="${esc(t)}" value="${esc(d.memo[t]||'')}" placeholder="${t==='쿠팡꿀템'?'예: 규조토 발매트, 실리콘 수세미 (실제 판매 상품)':'예: 이번 주는 자외선 차단 위주'}" /></div>`).join('');
+}
+
+async function fcSaveMemo(btn){
+  const memo={};document.querySelectorAll('#fc_memo input').forEach(x=>memo[x.dataset.topic]=x.value.trim());
+  try{const d=await fcApi({action:'memo',memo});FC.data.memo=d.memo;btn.textContent='저장됨';setTimeout(()=>btn.textContent='메모 저장',1400);}
+  catch(e){fcMsg(e.message,'dan');}
+}
 </script>
 </body>
 </html>

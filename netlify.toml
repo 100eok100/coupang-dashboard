@@ -11,3 +11,7 @@
 # 울산 창고 날씨 알림: 매일 07:00 한국시간 (UTC 22:00)
 [functions."weather-alert"]
   schedule = "0 22 * * *"
+
+# 콘텐츠 공장: 매일 06:00 한국시간 (UTC 21:00) 주제별 대본 생성 → 승인함 → 카카오톡
+[functions."factory-plan"]
+  schedule = "0 21 * * *"

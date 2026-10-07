@@ -187,4 +187,4 @@ async function runAlert({ send = true } = {}) {
   return { messages, days };
 }
 
-module.exports = { runAlert, buildMessages, loadConfig, saveConfig, requestToken, saveRefreshToken };
+module.exports = { runAlert, buildMessages, loadConfig, saveConfig, requestToken, saveRefreshToken, sendKakao };

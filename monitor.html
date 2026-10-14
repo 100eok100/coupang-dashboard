@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>모니터 주파수 초과 해결</title>
+<style>
+:root{
+  --bg:#F8F7F4;--surface:#FFFFFF;--border:#E4E2DC;
+  --text:#1A1917;--text2:#6B6860;--blue-text:#1A4FAD;--blue-bg:#EEF4FF;
+  --green-bg:#EDFBF3;--green-text:#0F7A3C;--red-text:#C0300F;--red-bg:#FFF1EE;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.6}
+.page{max-width:560px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--text2);font-size:14px;margin:0 0 20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.state{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--text2);white-space:nowrap}
+.state.ok{background:var(--green-bg);color:var(--green-text)}
+.card.now{border-color:var(--blue-text);background:var(--blue-bg)}
+.card.warn{border-color:var(--red-text);background:var(--red-bg)}
+p,ol,ul{font-size:14px;margin:0 0 8px}
+ol,ul{padding-left:20px}
+li{margin-bottom:4px}
+kbd{font-family:inherit;font-size:13px;font-weight:600;background:var(--bg);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:1px 6px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-bottom:1px solid var(--border)}
+th{font-size:13px;color:var(--text2);font-weight:600}
+td:first-child{width:40%}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>모니터 "주파수 초과" 해결</h1>
+  <p class="sub">모니터 고장 아님. 설정만 바꾸면 됩니다. 화면이 잘 나오는 모니터에서 위에서부터 순서대로 하세요.</p>
+
+  <div class="card now">
+    <h2>지금 할 것 (딱 이것만)</h2>
+    <ol>
+      <li>바탕화면 오른쪽 클릭 → <b>디스플레이 설정</b></li>
+      <li><b>식별</b> → 숫자 안 뜨는 모니터 번호 클릭</li>
+      <li>해상도 <b>(권장)</b></li>
+      <li>고급 디스플레이 → 새로 고침 빈도 <b>60Hz</b></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>원인 <span class="state ok">선은 정상</span></h2>
+    <ul>
+      <li>선 3개 모두 아래쪽 그래픽카드에 꽂힘 = OK</li>
+      <li>컴퓨터가 모니터가 감당 못 하는 속도(Hz)로 화면을 보내서 생기는 문제</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>STEP 1. 디스플레이 설정 열기</h2>
+    <ol>
+      <li>바탕화면 빈 곳에서 <b>마우스 오른쪽 클릭</b></li>
+      <li><b>디스플레이 설정</b> 클릭</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>STEP 2. 안 나오는 모니터 찾기</h2>
+    <ol>
+      <li>화면 위쪽에 네모 칸 <b>1, 2, 3</b> 확인</li>
+      <li><b>식별</b> 버튼 클릭 → 각 모니터에 숫자가 크게 뜸</li>
+      <li><b>숫자가 안 뜨는 모니터 = 문제 모니터</b></li>
+      <li>위쪽 네모 칸 중 그 번호를 <b>클릭</b></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>STEP 3. 해상도 맞추기</h2>
+    <ol>
+      <li>아래로 내려서 <b>디스플레이 해상도</b></li>
+      <li>목록에서 <b>(권장)</b> 이라고 써 있는 것 선택</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>STEP 4. 주파수 낮추기</h2>
+    <ol>
+      <li>같은 화면 더 아래 <b>고급 디스플레이</b> 클릭</li>
+      <li><b>새로 고침 빈도</b> → <b>60Hz</b> 선택</li>
+      <li>"변경 내용 유지" 창 뜨면 <b>유지</b> 클릭</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>그래도 안 될 때</h2>
+    <table>
+      <thead><tr><th>상황</th><th>할 일</th></tr></thead>
+      <tbody>
+        <tr><td>화면이 순간 꺼졌다 켜짐</td><td>정상. 15초 기다리면 원래대로 돌아옴</td></tr>
+        <tr><td>그래픽 화면 먹통</td><td><kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> 동시에 누르기 (그래픽 리셋, 삐 소리 남)</td></tr>
+        <tr><td>3대 모두 화면 안 나옴</td><td>이 방법 불가 → 바로 알려주기</td></tr>
+        <tr><td>60Hz로 나왔음</td><td>한 칸씩 올려보기. 다시 초과 뜨면 한 칸 내리기</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card warn">
+    <h2>주의사항</h2>
+    <ul>
+      <li>모니터 선은 <b>무조건 아래쪽(그래픽카드)</b>에만 꽂기</li>
+      <li>위쪽(메인보드) 구멍은 화면 안 나옴</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

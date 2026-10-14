@@ -79,11 +79,16 @@ Netlify 환경변수 `ALERT_SECRET`, `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`
 - 그래도 안 되면 PC용 `reels-tool/` (로그인 쿠키 사용, 차단에 가장 강함) 사용
 - 90초 넘는 릴스는 10초 제한 때문에 실패할 수 있습니다
 
+### 모니터 "주파수 초과" 해결 안내
+화면이 안 나오는 모니터가 생기면 대시보드 주소 뒤에 `/monitor.html` 붙여 접속 (휴대폰으로 보면서 PC 설정).
+순서: 디스플레이 설정 → 식별 → 해상도 (권장) → 고급 디스플레이 → 새로 고침 빈도 60Hz.
+
 ## 파일 구조
 ```
 coupang-dashboard/
 ├── index.html              ← 대시보드 메인 파일 (여기만 수정)
 ├── weather.html            ← 창고 날씨 알림 연결·테스트 화면
+├── monitor.html            ← 모니터 "주파수 초과" 해결 안내
 ├── netlify.toml            ← Netlify 설정 (수정 불필요)
 ├── netlify/
 │   └── functions/

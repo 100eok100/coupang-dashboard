@@ -280,6 +280,75 @@ a.btn{text-decoration:none;display:inline-block}
       </div>
     </div>
 
+    <!-- 2-1. 소싱 점검 · 마진 역산 -->
+    <div class="mod" id="mod_src">
+      <div class="mod-head" onclick="toggle('mod_src')">
+        <div class="mod-head-left">
+          <div class="icon purple">소싱</div>
+          <div>
+            <div class="mod-title">소싱 점검 · 마진 역산</div>
+            <div class="mod-desc">외부매칭 · 인증 · 최대 매입가 · 최저 판매가 · 2→20→100 발주 투입금 판정</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span id="src_badge" class="mod-tag n">오늘 0 / 20개</span>
+            <span class="mod-tag p">자동 판정</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="sec-label">1. 진입 조건</div>
+        <div class="checklist fs">
+          <label class="chk"><input type="checkbox" id="g_match" onchange="calcSrc()"><span><b>외부매칭 확인됨</b> — 안 되면 판매 불가, 즉시 탈락</span></label>
+          <label class="chk"><input type="checkbox" id="g_price" onchange="calcSrc()"><span><b>가격 통제권 있음</b> — 동일 상품 판매자 3명 이하 또는 구성 · 패키지 차별화로 내가 가격 결정</span></label>
+          <label class="chk"><input type="checkbox" id="g_label" onchange="calcSrc()"><span><b>한글 표시사항 준비됨</b> — 제품명 · 재질 · 수입원 · 제조국 · 주의사항</span></label>
+        </div>
+        <div class="f3 fs">
+          <div><div class="fl">상품명 *</div><input type="text" id="sr_name" placeholder="예: 스텐 밀폐용기 3P" oninput="calcSrc()" /></div>
+          <div><div class="fl">인증 대상</div>
+            <select id="sr_cert" onchange="calcSrc()">
+              <option value="없음">해당 없음</option>
+              <option value="식검">식검 (입에 들어가거나 음식에 닿음)</option>
+              <option value="KC">KC (전기 · 어린이 · 생활용품)</option>
+              <option value="전파">전파인증 (무선 · 블루투스)</option>
+            </select>
+          </div>
+          <div><div class="fl">인증 · 검사비 1회성 (원)</div><input type="number" id="sr_once" placeholder="0" oninput="calcSrc()" /></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-label">2. 원가</div>
+        <div class="f4 fs">
+          <div><div class="fl">1688 단가 (위안)</div><input type="number" id="sr_cny" placeholder="12" oninput="calcSrc()" /></div>
+          <div><div class="fl">환율 (원/위안)</div><input type="number" id="sr_fx" placeholder="195" oninput="calcSrc()" /></div>
+          <div><div class="fl">관세율 (%)</div><input type="number" id="sr_duty" placeholder="8" oninput="calcSrc()" /></div>
+          <div><div class="fl">수입 운송비 (원/개)</div><input type="number" id="sr_intl" placeholder="800" oninput="calcSrc()" /></div>
+        </div>
+        <div class="sec-label">3. 판매</div>
+        <div class="f3 fs">
+          <div><div class="fl">판매가 (원) — 경쟁사 최저가 기준</div><input type="number" id="sr_sell" placeholder="19900" oninput="calcSrc()" /></div>
+          <div><div class="fl">로켓그로스 물류비 (원/개)</div><input type="number" id="sr_ship" placeholder="2500" oninput="calcSrc()" /></div>
+          <div><div class="fl">목표 순이익률 (%)</div><input type="number" id="sr_target" placeholder="20" oninput="calcSrc()" /></div>
+        </div>
+        <div class="f3 fs">
+          <div><div class="fl">수수료율 (%)</div><input type="number" id="sr_fee" placeholder="10.8" oninput="calcSrc()" /></div>
+          <div><div class="fl">광고비율 (%)</div><input type="number" id="sr_ad" placeholder="10" oninput="calcSrc()" /></div>
+          <div><div class="fl">반품율 (%)</div><input type="number" id="sr_ret" placeholder="3" oninput="calcSrc()" /></div>
+        </div>
+        <div id="src_out"></div>
+        <div class="btn-row" style="gap:6px">
+          <button class="btn" onclick="srcCsv()">CSV 다운로드</button>
+          <button class="btn primary" onclick="srcSave()">후보 저장</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <div class="fl" style="margin:0">저장한 후보</div>
+          <button class="btn sm" onclick="srcClear()">전체 삭제</button>
+        </div>
+        <div id="src_hist" style="margin-top:6px"></div>
+      </div>
+    </div>
+
     <!-- 3. 경쟁사 -->
     <div class="mod" id="mod_comp">
       <div class="mod-head" onclick="toggle('mod_comp')">
@@ -1095,6 +1164,106 @@ function reelsCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 renderReelHist();
+
+/* 소싱 점검 · 마진 역산 */
+const SRC_KEY='src_hist';
+let SRC_HIST=lsGet(SRC_KEY,[]);
+let SRC_CUR=null;
+function won(n){return Math.round(n).toLocaleString()+'원';}
+function srcNum(id,d){const v=parseFloat(document.getElementById(id).value);return isNaN(v)?d:v;}
+
+function calcSrc(){
+  const el=document.getElementById('src_out');
+  const name=document.getElementById('sr_name').value.trim();
+  const cert=document.getElementById('sr_cert').value;
+  const once=srcNum('sr_once',0);
+  const cny=srcNum('sr_cny',0),fx=srcNum('sr_fx',195),duty=srcNum('sr_duty',8),intl=srcNum('sr_intl',0);
+  const sell=srcNum('sr_sell',0),ship=srcNum('sr_ship',0),target=srcNum('sr_target',20);
+  const fee=srcNum('sr_fee',10.8),ad=srcNum('sr_ad',10),ret=srcNum('sr_ret',3);
+  const match=document.getElementById('g_match').checked;
+  const price=document.getElementById('g_price').checked;
+  const label=document.getElementById('g_label').checked;
+  if(!cny||!sell){el.innerHTML='<div class="result-box empty">1688 단가와 판매가를 넣으면 바로 판정합니다.</div>';SRC_CUR=null;return;}
+
+  const unit=fx*(1+duty/100);
+  const landed=cny*unit+intl;
+  const varRate=(fee+ad+ret)/100;
+  const net=sell-landed-ship-sell*varRate;
+  const margin=net/sell*100;
+  const room=1-varRate-target/100;
+  const maxLanded=sell*room-ship;
+  const maxCny=(maxLanded-intl)/unit;
+  const minSell=room>0?(landed+ship)/room:0;
+  const breakeven=once>0&&net>0?Math.ceil(once/net):0;
+
+  let verdict='진행',cls='suc',why=`2개 발주하십시오. 초록불 확인 후 20개, 판매 확인 후 100개로 갑니다.`;
+  const hold=[];
+  if(!price) hold.push('가격 통제권 없음 — 구성 변경(2P · 3P 세트)으로 단독 상품을 만드십시오');
+  if(cert!=='없음'&&!once) hold.push(`${cert} 대상인데 검사비가 0원 — 견적 받아 입력하십시오`);
+  if(!label) hold.push('한글 표시사항 미준비 — 입고 반려됩니다');
+  if(margin<target) hold.push(`순이익률 ${margin.toFixed(1)}% < 목표 ${target}% — 매입가 ${maxCny>0?maxCny.toFixed(1)+'위안':'협상 불가'} 이하로 협상하거나 판매가 ${won(minSell)} 이상 확보`);
+  if(breakeven>100) hold.push(`1회성 비용 회수에 ${breakeven}개 필요 — 100개 안에 회수 못 하면 들어가지 마십시오`);
+  if(!match){verdict='탈락';cls='dan';why='외부매칭이 안 됩니다. 판매 불가 상품입니다. 다음 상품으로 넘어가십시오.';}
+  else if(net<=0){verdict='탈락';cls='dan';why=`개당 ${won(-net)} 적자입니다. 이 판매가로는 팔수록 손해입니다.`;}
+  else if(margin<15){verdict='보류';cls='warn';why=`순이익률 ${margin.toFixed(1)}%로 최저 기준 15% 미달입니다.`;}
+  else if(hold.length){verdict='보류';cls='warn';why='아래 항목을 해결하면 진행입니다.';}
+
+  const c=margin>=target?'g':margin>=15?'b':'r';
+  const stages=[2,20,100].map((q,i)=>{const inv=landed*q+(i===0?once:0);return `<div class="rule-row">${q}개 발주 <span class="rule-val">투입 ${won(inv)} · 예상 순이익 ${won(net*q)}</span></div>`;}).join('');
+  el.innerHTML=`
+    <div class="result-box ${cls}" style="font-size:13px;margin-bottom:8px">판정: ${verdict} — ${why}</div>
+    ${hold.length&&verdict!=='탈락'?`<div style="margin-bottom:8px">${hold.map((h,i)=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${i+1}. ${esc(h)}</div>`).join('')}</div>`:''}
+    <div class="f4" style="margin-bottom:8px">
+      <div class="mcard"><div class="mcard-l">랜딩원가 (개당)</div><div class="mcard-v">${won(landed)}</div></div>
+      <div class="mcard"><div class="mcard-l">순이익 (개당)</div><div class="mcard-v ${c}">${won(net)}</div></div>
+      <div class="mcard"><div class="mcard-l">순이익률</div><div class="mcard-v ${c}">${margin.toFixed(1)}%</div></div>
+      <div class="mcard"><div class="mcard-l">1회성 비용 회수</div><div class="mcard-v b">${breakeven?breakeven+'개':'-'}</div></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="sec-label">역산 (목표 ${target}% 유지)</div>
+        <div class="rule-row">최대 매입가 <span class="rule-val b">${maxCny>0?maxCny.toFixed(1)+'위안':'불가'}</span></div>
+        <div class="rule-row">최대 랜딩원가 <span class="rule-val b">${maxLanded>0?won(maxLanded):'불가'}</span></div>
+        <div class="rule-row">최저 판매가 <span class="rule-val b">${minSell>0?won(minSell):'불가'}</span></div>
+        <div class="rule-row">광고비 상한 (매출 ${ad}%) <span class="rule-val">${won(sell*ad/100)} / 개</span></div>
+      </div>
+      <div>
+        <div class="sec-label">단계 발주 투입금</div>
+        ${stages}
+      </div>
+    </div>`;
+  SRC_CUR={at:Date.now(),name:name||'(이름 없음)',verdict,cert,cny,sell,landed:Math.round(landed),net:Math.round(net),margin:+margin.toFixed(1),maxCny:maxCny>0?+maxCny.toFixed(1):0,minSell:Math.round(minSell),breakeven,why:[why,...hold].join(' / ')};
+}
+
+function srcSave(){
+  if(!SRC_CUR){alert('1688 단가와 판매가를 먼저 넣으십시오.');return;}
+  if(!document.getElementById('sr_name').value.trim()){alert('상품명을 넣으십시오.');return;}
+  SRC_HIST.unshift({...SRC_CUR,at:Date.now()});SRC_HIST=SRC_HIST.slice(0,300);
+  lsSet(SRC_KEY,SRC_HIST);renderSrcHist();
+}
+function srcDel(i){SRC_HIST.splice(i,1);lsSet(SRC_KEY,SRC_HIST);renderSrcHist();}
+function srcClear(){if(!SRC_HIST.length||!confirm('저장한 후보를 모두 삭제합니다.'))return;SRC_HIST=[];lsSet(SRC_KEY,SRC_HIST);renderSrcHist();}
+function renderSrcHist(){
+  const today=new Date().toDateString();
+  const n=SRC_HIST.filter(h=>new Date(h.at).toDateString()===today).length;
+  const badge=document.getElementById('src_badge');
+  badge.textContent=`오늘 ${n} / 20개`;badge.className='mod-tag '+(n>=20?'g':'n');
+  const el=document.getElementById('src_hist');
+  if(!SRC_HIST.length){el.innerHTML='<div class="result-box empty">저장한 후보가 없습니다. 하루 20~30개를 점검하십시오.</div>';return;}
+  const vc={진행:'g',보류:'w',탈락:'r'};
+  el.innerHTML=SRC_HIST.map((h,i)=>`<div class="rl-item" style="cursor:default"><span><span class="tag ${vc[h.verdict]||'n'}">${h.verdict}</span> ${esc(h.name)} · 판매가 ${won(h.sell)} · 순이익 ${won(h.net)} (${h.margin}%) · 최대 매입가 ${h.maxCny||'-'}위안</span><span style="color:var(--text3);flex-shrink:0">${new Date(h.at).toLocaleDateString('ko-KR')} <button class="btn sm" onclick="srcDel(${i})">삭제</button></span></div>`).join('');
+}
+function srcCsv(){
+  if(!SRC_HIST.length){alert('저장한 후보가 없습니다.');return;}
+  const cols=['저장일시','상품명','판정','인증','1688단가(위안)','판매가','랜딩원가','순이익','순이익률(%)','최대매입가(위안)','최저판매가','1회성비용회수(개)','사유'];
+  const rows=SRC_HIST.map(h=>[new Date(h.at).toLocaleString('ko-KR'),h.name,h.verdict,h.cert,h.cny,h.sell,h.landed,h.net,h.margin,h.maxCny,h.minSell,h.breakeven,h.why]);
+  const csv='﻿'+[cols,...rows].map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='소싱후보_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+calcSrc();renderSrcHist();
 </script>
 </body>
 </html>

@@ -349,6 +349,49 @@ a.btn{text-decoration:none;display:inline-block}
       </div>
     </div>
 
+    <!-- 2-2. 상품 성과 판정 (정량평가) -->
+    <div class="mod" id="mod_kpi">
+      <div class="mod-head" onclick="toggle('mod_kpi')">
+        <div class="mod-head-left">
+          <div class="icon blue">판정</div>
+          <div>
+            <div class="mod-title">상품 성과 판정기</div>
+            <div class="mod-desc">시트 붙여넣기 → CTR · 전환율 · ROAS · 광고비율로 상품별 다음 행동 자동 판정</div>
+          </div>
+        </div>
+        <div class="mod-right">
+          <div class="mod-tags">
+            <span class="mod-tag g">AI 없음</span>
+            <span class="mod-tag n">정량평가</span>
+          </div>
+          <div class="chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div>
+        </div>
+      </div>
+      <div class="mod-body">
+        <div class="fs">
+          <div class="fl">구글 시트에서 7칸 복사 → 붙여넣기 (한 줄 = 한 상품, 제목줄 있어도 됨)</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">순서: 상품명 · 노출수 · 클릭수 · 주문수 · 광고비 · 광고매출 · 전체매출</div>
+          <textarea id="k_in" style="min-height:96px;font-family:monospace" placeholder="스텐 밀폐용기 3P	12000	96	9	45000	179100	298500" oninput="calcKpi()"></textarea>
+        </div>
+        <div class="f4 fs">
+          <div><div class="fl">최소 노출수</div><input type="number" id="k_imp" placeholder="1000" oninput="calcKpi()" /></div>
+          <div><div class="fl">CTR 기준 (%)</div><input type="number" id="k_ctr" placeholder="0.5" oninput="calcKpi()" /></div>
+          <div><div class="fl">전환율 기준 (%)</div><input type="number" id="k_cvr" placeholder="5" oninput="calcKpi()" /></div>
+          <div><div class="fl">ROAS 최소 (%)</div><input type="number" id="k_roas" placeholder="250" oninput="calcKpi()" /></div>
+        </div>
+        <div class="f4 fs">
+          <div><div class="fl">광고비율 상한 (%)</div><input type="number" id="k_adr" placeholder="10" oninput="calcKpi()" /></div>
+        </div>
+        <div id="kpi_out"></div>
+        <div class="btn-row" style="gap:6px">
+          <button class="btn" onclick="kpiSample()">예시 넣기</button>
+          <button class="btn" id="kpi_cp" onclick="kpiCopy(this)">시트용 복사</button>
+          <button class="btn primary" onclick="kpiCsv()">CSV 다운로드</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">판정 순서: 노출 부족 → CTR(썸네일) → 전환율(상세 · 가격 · 리뷰) → ROAS(키워드) → 광고비율 → 전부 통과 시 재고 확장. 한 상품에 행동은 1개만 냅니다. 고친 뒤 7일 데이터로 다시 붙여넣으십시오.</div>
+      </div>
+    </div>
+
     <!-- 3. 경쟁사 -->
     <div class="mod" id="mod_comp">
       <div class="mod-head" onclick="toggle('mod_comp')">
@@ -1264,6 +1307,63 @@ function srcCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 calcSrc();renderSrcHist();
+
+/* 상품 성과 판정 (정량평가 · AI 없음) */
+let KPI_ROWS=[];
+function kpiParse(txt){
+  return txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const c=l.includes('\t')?l.split('\t'):l.split(',');
+    const n=c.slice(1,7).map(v=>parseFloat(String(v).replace(/[^\d.\-]/g,'')));
+    return {name:c[0].trim(),imp:n[0],clk:n[1],ord:n[2],ad:n[3],adRev:n[4],rev:n[5]};
+  }).filter(r=>r.name&&!isNaN(r.imp)&&!isNaN(r.clk));
+}
+function kpiJudge(r,t){
+  const ctr=r.imp?r.clk/r.imp*100:0;
+  const cvr=r.clk?(r.ord||0)/r.clk*100:0;
+  const roas=r.ad?(r.adRev||0)/r.ad*100:0;
+  const adr=r.rev?(r.ad||0)/r.rev*100:0;
+  const m={ctr,cvr,roas,adr};
+  if(r.imp<t.imp) return {...m,v:'데이터 부족',c:'n',act:`노출 ${t.imp.toLocaleString()}회 미만. 검색어를 10개 추가하고 7일 뒤 다시 판정`};
+  if(ctr<t.ctr) return {...m,v:'썸네일 교체',c:'r',act:`CTR ${ctr.toFixed(2)}% < ${t.ctr}%. 대표이미지 시안 3개 만들어 1개씩 7일 테스트`};
+  if(cvr<t.cvr) return {...m,v:'상세 · 가격 점검',c:'r',act:`클릭은 오는데 전환율 ${cvr.toFixed(1)}% < ${t.cvr}%. 상세 첫 화면 → 가격(최저가 대비) → 리뷰 수 순서로 점검`};
+  if(r.ad&&roas<t.roas) return {...m,v:'키워드 정리',c:'w',act:`ROAS ${Math.round(roas)}% < ${t.roas}%. 광고비 쓰고 주문 0건인 키워드 제외, 입찰가 20% 인하`};
+  if(r.rev&&adr>t.adr) return {...m,v:'광고비 축소',c:'w',act:`광고비율 ${adr.toFixed(1)}% > ${t.adr}%. 일예산을 매출의 ${t.adr}%로 맞춤`};
+  return {...m,v:'확장',c:'g',act:'전 지표 통과. 다음 발주 단계(20 → 100개)로 재고 확장, 광고 예산은 매출의 10% 유지'};
+}
+function calcKpi(){
+  const t={imp:srcNum('k_imp',1000),ctr:srcNum('k_ctr',0.5),cvr:srcNum('k_cvr',5),roas:srcNum('k_roas',250),adr:srcNum('k_adr',10)};
+  KPI_ROWS=kpiParse(document.getElementById('k_in').value).map(r=>({...r,...kpiJudge(r,t)}));
+  const el=document.getElementById('kpi_out');
+  if(!KPI_ROWS.length){el.innerHTML='<div class="result-box empty">시트에서 상품 행을 복사해 붙여넣으면 바로 판정합니다. [예시 넣기]로 형식을 확인하십시오.</div>';return;}
+  const cnt={};KPI_ROWS.forEach(r=>cnt[r.v]=(cnt[r.v]||0)+1);
+  const order=['썸네일 교체','상세 · 가격 점검','키워드 정리','광고비 축소','데이터 부족','확장'];
+  const rows=[...KPI_ROWS].sort((a,b)=>order.indexOf(a.v)-order.indexOf(b.v));
+  el.innerHTML=`
+    <div style="margin-bottom:8px">${order.filter(k=>cnt[k]).map(k=>`<span class="tag ${KPI_ROWS.find(r=>r.v===k).c}">${k} ${cnt[k]}</span>`).join('')}</div>
+    <div class="ads-wrap"><table class="ads-table">
+      <tr><th>판정</th><th>상품</th><th>CTR</th><th>전환율</th><th>ROAS</th><th>광고비율</th><th>지금 할 행동</th></tr>
+      ${rows.map(r=>`<tr><td><span class="tag ${r.c}">${r.v}</span></td><td>${esc(r.name)}</td><td>${r.ctr.toFixed(2)}%</td><td>${r.cvr.toFixed(1)}%</td><td>${r.ad?Math.round(r.roas)+'%':'-'}</td><td>${r.rev?r.adr.toFixed(1)+'%':'-'}</td><td class="ads-copy">${esc(r.act)}</td></tr>`).join('')}
+    </table></div>`;
+}
+function kpiSample(){
+  document.getElementById('k_in').value=['상품명\t노출수\t클릭수\t주문수\t광고비\t광고매출\t전체매출','스텐 밀폐용기 3P\t12000\t96\t9\t45000\t179100\t298500','실리콘 주방장갑\t8000\t24\t2\t30000\t39800\t59700','욕실 선반 2단\t15000\t120\t3\t60000\t71700\t119500','차량용 쓰레기통\t600\t5\t1\t3000\t12900\t25800','고무장갑 10켤레\t20000\t160\t14\t40000\t166600\t420000'].join('\n');
+  calcKpi();
+}
+const KPI_COLS=['판정','상품명','노출수','클릭수','주문수','광고비','광고매출','전체매출','CTR(%)','전환율(%)','ROAS(%)','광고비율(%)','지금 할 행동'];
+function kpiRow(r){return [r.v,r.name,r.imp,r.clk,r.ord,r.ad,r.adRev,r.rev,r.ctr.toFixed(2),r.cvr.toFixed(1),Math.round(r.roas),r.adr.toFixed(1),r.act].map(v=>v==null||Number.isNaN(v)?'':String(v));}
+function kpiCopy(btn){
+  if(!KPI_ROWS.length){alert('판정할 데이터가 없습니다.');return;}
+  cp([KPI_COLS,...KPI_ROWS.map(kpiRow)].map(r=>r.map(v=>rlQuote(v,'\t')).join('\t')).join('\n'),btn);
+}
+function kpiCsv(){
+  if(!KPI_ROWS.length){alert('판정할 데이터가 없습니다.');return;}
+  const csv='﻿'+[KPI_COLS,...KPI_ROWS.map(kpiRow)].map(r=>r.map(v=>rlQuote(v,',')).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='상품판정_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+calcKpi();
 </script>
 </body>
 </html>
